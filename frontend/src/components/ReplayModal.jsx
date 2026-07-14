@@ -31,6 +31,7 @@ export default function ReplayModal({ sessionId, onClose }) {
           theme: "monokai",
           fit: "width",
           terminalFontSize: "small",
+          autoPlay: true,
         });
         setState("ready");
       })
