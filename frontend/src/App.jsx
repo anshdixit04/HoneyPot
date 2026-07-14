@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import WorldMap from "./components/WorldMap.jsx";
 import EventFeed from "./components/EventFeed.jsx";
 import StatsPanel from "./components/StatsPanel.jsx";
+import AboutPanel from "./components/AboutPanel.jsx";
 import { WS_URL, fetchEvents, fetchStats } from "./api.js";
 import "./App.css";
 
@@ -9,6 +10,7 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [stats, setStats] = useState(null);
   const [status, setStatus] = useState("connecting");
+  const [showAbout, setShowAbout] = useState(false);
   const statsTimerRef = useRef(null);
 
   // Debounce stats refreshes so a burst of live events (e.g. an attacker
@@ -73,13 +75,19 @@ export default function App() {
     <div className="dashboard">
       <header>
         <h1>Live Honeypot Attack Map</h1>
-        <span className={`ws-status ${status}`}>WebSocket: {status}</span>
+        <div className="header-right">
+          <button className="about-button" onClick={() => setShowAbout(true)}>
+            About
+          </button>
+          <span className={`ws-status ${status}`}>WebSocket: {status}</span>
+        </div>
       </header>
       <div className="dashboard-grid">
         <WorldMap events={events} />
         <StatsPanel stats={stats} />
         <EventFeed events={events} />
       </div>
+      {showAbout && <AboutPanel onClose={() => setShowAbout(false)} />}
     </div>
   );
 }

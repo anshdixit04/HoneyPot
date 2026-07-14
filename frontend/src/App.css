@@ -25,6 +25,12 @@ header h1 {
   margin: 0;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .ws-status {
   font-family: monospace;
   font-size: 0.85rem;
@@ -38,6 +44,71 @@ header h1 {
 .ws-status.disconnected,
 .ws-status.error {
   color: #f87171;
+}
+
+.about-button {
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: #d7e0ee;
+  background: #1b2635;
+  border: 1px solid #2a3a52;
+  border-radius: 4px;
+  padding: 0.2rem 0.7rem;
+  cursor: pointer;
+}
+.about-button:hover {
+  background: #253248;
+}
+
+.about-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 9, 16, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  padding: 1rem;
+}
+
+.about-panel {
+  position: relative;
+  max-width: 560px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: #111a2b;
+  border: 1px solid #1f2c42;
+  border-radius: 10px;
+  padding: 1.5rem 1.75rem;
+  line-height: 1.5;
+}
+
+.about-panel h2 {
+  margin-top: 0;
+}
+
+.about-panel h3 {
+  margin: 1rem 0 0.3rem;
+}
+
+.about-panel a {
+  color: #60a5fa;
+}
+
+.about-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: #93a4bf;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.about-close:hover {
+  color: #d7e0ee;
 }
 
 .dashboard-grid {
