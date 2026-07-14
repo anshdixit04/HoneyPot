@@ -9,8 +9,17 @@ design, WebSocket streaming, event pipelines, and SIEM-style log analysis.
 
 ## Status
 
-Local prototype is working, Phase 3 container hardening is in place, and Phase 4
-VPS deployment artifacts are being prepared.
+Phases 0-4 are complete: local prototype, GeoIP/dashboard enrichment, container
+hardening, and a live VPS deployment with an egress-filtered honeypot behind
+HTTPS. Phase 5 (recruiter polish) is in progress.
+
+## Live Demo
+
+**[isa-font-apparently-surprised.trycloudflare.com](https://isa-font-apparently-surprised.trycloudflare.com)**
+
+Served over HTTPS via a Cloudflare Tunnel from the VPS. Note: this is a free
+quick Tunnel, so the URL changes if the tunnel process ever restarts - for a
+permanent link, point a real domain at a named Cloudflare Tunnel instead.
 
 ## Docs
 
