@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import WorldMap from "./components/WorldMap.jsx";
-import EventFeed from "./components/EventFeed.jsx";
-import StatsPanel from "./components/StatsPanel.jsx";
+import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
+import LivePage from "./pages/LivePage.jsx";
+import MetricsPage from "./pages/MetricsPage.jsx";
 import AboutPanel from "./components/AboutPanel.jsx";
 import { WS_URL, fetchEvents, fetchStats } from "./api.js";
 import "./App.css";
@@ -72,22 +72,33 @@ export default function App() {
   }, [refreshStats]);
 
   return (
-    <div className="dashboard">
-      <header>
-        <h1>Live Honeypot Attack Map</h1>
-        <div className="header-right">
-          <button className="about-button" onClick={() => setShowAbout(true)}>
-            About
-          </button>
-          <span className={`ws-status ${status}`}>WebSocket: {status}</span>
-        </div>
-      </header>
-      <div className="dashboard-grid">
-        <WorldMap events={events} />
-        <StatsPanel stats={stats} />
-        <EventFeed events={events} />
+    <BrowserRouter>
+      <div className="dashboard">
+        <header>
+          <div className="header-left">
+            <h1>Live Honeypot Attack Map</h1>
+            <nav className="main-nav">
+              <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+                Live
+              </NavLink>
+              <NavLink to="/metrics" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+                Metrics
+              </NavLink>
+            </nav>
+          </div>
+          <div className="header-right">
+            <button className="about-button" onClick={() => setShowAbout(true)}>
+              About
+            </button>
+            <span className={`ws-status ${status}`}>WebSocket: {status}</span>
+          </div>
+        </header>
+        <Routes>
+          <Route path="/" element={<LivePage events={events} stats={stats} />} />
+          <Route path="/metrics" element={<MetricsPage />} />
+        </Routes>
+        {showAbout && <AboutPanel onClose={() => setShowAbout(false)} />}
       </div>
-      {showAbout && <AboutPanel onClose={() => setShowAbout(false)} />}
-    </div>
+    </BrowserRouter>
   );
 }

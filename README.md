@@ -15,7 +15,7 @@ HTTPS. Phase 5 (recruiter polish) is in progress.
 
 ## Live Demo
 
-**[isa-font-apparently-surprised.trycloudflare.com](https://isa-font-apparently-surprised.trycloudflare.com)**
+**[partially-competing-advertisers-motorcycles.trycloudflare.com](https://partially-competing-advertisers-motorcycles.trycloudflare.com)**
 
 Served over HTTPS via a Cloudflare Tunnel from the VPS. Note: this is a free
 quick Tunnel, so the URL changes if the tunnel process ever restarts - for a
@@ -27,6 +27,7 @@ permanent link, point a real domain at a named Cloudflare Tunnel instead.
 - [`docs/02-design-doc.md`](docs/02-design-doc.md) - architecture, data flow, and threat model
 - [`docs/03-prototype-spec.md`](docs/03-prototype-spec.md) - original local prototype scope
 - [`docs/04-vps-deployment.md`](docs/04-vps-deployment.md) - Phase 4 VPS deployment runbook
+- [`docs/05-visual-redesign-prompt.md`](docs/05-visual-redesign-prompt.md) - Phase 5 build prompt: 3D globe, metrics dashboard, report generator
 
 ## Architecture
 

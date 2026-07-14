@@ -149,3 +149,66 @@ Monitoring: a simple healthcheck endpoint (`/healthz`) + uptime pinger (UptimeRo
 - Add a second honeypot type (fake HTTP/IoT device, e.g. mimicking a router login page) to diversify attack data and story.
 - Add session replay UI (scrub through an attacker's actual typed commands like a terminal recording).
 - If traffic grows enough to matter, move SQLite to Postgres and add a proper message queue between shipper and backend — not needed at current scale.
+
+## 8. Phase 5: Visual Redesign — 3D Globe, Metrics Dashboard, Report Generator
+
+Status: Draft v1, planned. This is the "recruiter polish" phase referenced in the README. Goal: replace the flat SVG map and CSS-bar stats with a visually stronger, animated frontend, without touching the backend contract (`/api/events`, `/api/stats`, `wss://<host>/ws/events` stay as-is — this is a frontend-only phase).
+
+### 8.1 Current state (baseline)
+- `frontend/src/components/WorldMap.jsx` — flat 2D map via `react-simple-maps` (`ComposableMap`/`Geography`/`Marker`), static pins, no zoom/pan, no animation beyond a CSS pin pop-in.
+- `frontend/src/components/StatsPanel.jsx` — top countries / top credentials / connections-per-hour rendered as plain CSS div bars, one page, no charts library.
+- `frontend/src/App.jsx` — single-page grid layout (`dashboard-grid`): map, stats, and event feed all on one screen.
+- Visual language: dark theme (`#0b1220` background, `#111a2b` panels, `#60a5fa` blue accent, `#ff4d4f`/`#4ade80`/`#f87171` status colors), monospace for data, no motion design beyond the pin keyframe.
+- No PDF/export capability of any kind exists yet.
+
+### 8.2 New capability 1 — 3D attack globe
+**Library:** `react-globe.gl` (Three.js under the hood, React-idiomatic API, actively maintained, fits the existing React 18 + Vite stack with a single new dependency — no build tooling changes needed).
+
+- Replace `WorldMap.jsx` with a `Globe3D.jsx` component rendering a rotating dark-textured Earth (night-lights or dark vector texture to match the existing `#0b1220`/`#111a2b` palette).
+- Each incoming event becomes an animated arc or ping from the attacker's `lat`/`lon` to the honeypot's fixed VPS location — reuses the exact same event shape already on the wire (`lat`, `lon`, `country`, `event_type`), no backend changes.
+- Idle state: slow auto-rotation. On new event: camera does a short (400-600ms) ease-in-out zoom/tilt toward the new arc's origin, then eases back to the global view — this is the "zoom in and zoom out" behavior, driven by `react-globe.gl`'s built-in `pointOfView()` camera control on a `requestAnimationFrame`-friendly transition, not a custom Three.js camera rig (keeps this a days-not-weeks addition).
+- Manual zoom/pan/rotate stays enabled via the library's built-in OrbitControls passthrough so a recruiter can explore the globe themselves.
+- Color-code arcs/points by `event_type` (login_attempt / command_input / connection) using the existing status palette, so the globe carries the same meaning as today's pin colors.
+- Performance guard: cap simultaneous animated arcs (e.g. keep last ~50 live, same pattern as the existing 200-event cap in `App.jsx`) so a burst of bot traffic doesn't tank frame rate.
+
+### 8.3 New capability 2 — separate 3D metrics dashboard
+A second route/view (`/metrics`), not a panel bolted onto the main screen — the existing single-page grid stays as the "live" view; this is a distinct dashboard for aggregate stats.
+
+- Add client-side routing (`react-router-dom`, the one other new dependency needed) with two views: `/` (today's live map + feed) and `/metrics` (new).
+- Metrics view consumes the same `GET /api/stats?range=` REST endpoint already defined in Section 2, just requesting more ranges (24h / 7d / 30d) via a range selector.
+- Visuals: replace the flat CSS bars in `StatsPanel.jsx` with real charts — recommend `recharts` or `visx` for the 2D charts (connections-over-time line/area, top-countries bar) plus one or two 3D-styled centerpieces for visual impact:
+  - A 3D-tilted bar/column chart (CSS 3D transforms or a lightweight Three.js scene) for top countries or top credentials — the "3D outputs on metrics" ask — rather than every chart being literally 3D, which usually hurts readability. Keep this to 1-2 hero visuals, not the whole dashboard, so the numbers stay legible.
+  - Consider a small rotating "globe heatmap" (reuse `react-globe.gl` in a static/summary mode, no live ticking) showing cumulative attack density by country as a second callback to the main globe's visual language.
+- Each metrics tile animates in on mount/data-refresh (fade + slide, ~200-300ms, respecting `prefers-reduced-motion`).
+
+### 8.4 New capability 3 — report generator
+On-demand PDF summary report, generated client-side or backend-side from existing data — no new external/paid data source required; "some other source" in the original ask is satisfied by the existing `/api/stats` and `/api/events` endpoints, just parameterized by a date range.
+
+- New UI: a "Generate Report" button on the `/metrics` view with a date-range picker (reuses the same range param as the stats endpoint).
+- **Recommended approach:** new backend endpoint `GET /api/report?range=7d&format=pdf` that queries the existing SQLite store, renders a templated PDF (e.g. via `weasyprint` or `reportlab` server-side, since the backend already owns the data and this avoids shipping a heavy PDF-rendering library to the browser) containing: summary stats, top countries/credentials, a static rendered chart image, and a few "notable session" callouts (ties into the session-replay idea in Section 7).
+- **Alternative (no backend change):** generate the PDF client-side from data already in memory using `jspdf` + `html2canvas` to snapshot the metrics view — faster to ship, less polished, no new backend route. Recommended as a fallback if backend time is tight, not as the primary path.
+- Output is a downloadable file (`honeypot-report-<range>-<date>.pdf`), suitable for attaching to a portfolio/resume email.
+
+### 8.5 New dependencies summary
+| Package | Purpose | Added to |
+|---|---|---|
+| `react-globe.gl` | 3D globe + arcs/points + camera zoom | frontend |
+| `react-router-dom` | `/` vs `/metrics` routing | frontend |
+| `recharts` (or `visx`) | 2D charts on metrics view | frontend |
+| `three` | peer dep of `react-globe.gl`; also backs any custom 3D chart | frontend |
+| `weasyprint` or `reportlab` | server-rendered PDF report | backend |
+| `jspdf` + `html2canvas` (fallback only) | client-rendered PDF report | frontend |
+
+### 8.6 Visual design system (make it "look attractive")
+Keep the existing dark theme as the base — it already reads as a credible security-tool aesthetic — but tighten it into an explicit system rather than ad-hoc CSS:
+- **Palette:** background `#0b1220`, panel `#111a2b`, border `#1f2c42`, text `#d7e0ee`, muted text `#93a4bf`; accent blue `#60a5fa` for primary data, amber `#fbbf24` for login attempts, red `#f87171`/`#ff4d4f` for command input/critical, green `#4ade80` for healthy/connected status. Reuse these exact tokens across the new globe/charts instead of introducing a second palette.
+- **Typography:** keep system sans for UI chrome, monospace for anything data-like (IPs, credentials, timestamps) — already established, extend it to the new metrics view.
+- **Motion principles:** every state change animates (event arrival, route change, chart refresh), but nothing loops forever except the globe's idle rotation — recruiters should feel "alive," not "busy." Respect `prefers-reduced-motion` throughout.
+- **Hierarchy:** the globe is the visual centerpiece of `/`; the hero 3D chart is the centerpiece of `/metrics`. Everything else (feed, bars, tables) is supporting detail, sized and positioned accordingly.
+
+### 8.7 Suggested build order
+1. `react-router-dom` + empty `/metrics` route (low risk, unlocks everything else).
+2. Swap `WorldMap.jsx` → `Globe3D.jsx` with static globe, then live arcs, then zoom-on-event camera behavior.
+3. Build out `/metrics` with `recharts` first (fast, functional), then layer in the 1-2 hero 3D visuals.
+4. Add the report generator, starting with the client-side `jspdf` fallback if a quick demo is needed, upgrading to the backend PDF endpoint when time allows.
+5. Pass over the whole app applying Section 8.6's design tokens/motion consistently, last — polish after function.

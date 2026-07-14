@@ -70,3 +70,15 @@ def get_stats(hours: int = 24) -> dict:
         "top_credentials": top_credentials,
         "connections_by_hour": connections_by_hour,
     }
+
+
+def get_top_sessions(hours: int = 24, limit: int = 8) -> list:
+    since = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+    with connect() as conn:
+        rows = conn.execute(
+            """SELECT session_id, src_ip, first_seen, last_seen, event_count, credentials, commands
+               FROM sessions WHERE last_seen >= ?
+               ORDER BY event_count DESC LIMIT ?""",
+            (since, limit),
+        ).fetchall()
+    return [dict(r) for r in rows]

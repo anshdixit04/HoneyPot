@@ -10,6 +10,7 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from typing import Optional
 
 try:
@@ -24,10 +25,10 @@ except ModuleNotFoundError:
 # cloud-sync folder (see infra/docker-compose.yml for why).
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import db, geoip, sessions, store
+from app import db, geoip, report, sessions, store
 from app.log_tailer import tail_file
 from app.parser import parse_line
 
@@ -129,6 +130,18 @@ async def api_events(limit: int = 100, before: Optional[str] = None):
 async def api_stats(range: str = "24h"):
     stats = await asyncio.to_thread(store.get_stats, _parse_range_hours(range))
     return stats
+
+
+@app.get("/api/report")
+async def api_report(range: str = "24h", format: str = "pdf"):
+    hours = _parse_range_hours(range)
+    pdf_bytes = await asyncio.to_thread(report.build_report_pdf, range, hours)
+    filename = f"honeypot-report-{range}-{datetime.now(timezone.utc).date()}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 def _parse_range_hours(range_str: str) -> int:

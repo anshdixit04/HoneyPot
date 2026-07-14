@@ -25,6 +25,34 @@ header h1 {
   margin: 0;
 }
 
+.header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 1.25rem;
+}
+
+.main-nav {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.nav-link {
+  font-size: 0.85rem;
+  color: #93a4bf;
+  text-decoration: none;
+  padding: 0.25rem 0.7rem;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+.nav-link:hover {
+  color: #d7e0ee;
+  background: #1b2635;
+}
+.nav-link.active {
+  color: #60a5fa;
+  background: #16233a;
+}
+
 .header-right {
   display: flex;
   align-items: center;
@@ -137,6 +165,12 @@ header h1 {
   grid-column: 1;
   grid-row: 1;
 }
+.globe-wrap {
+  width: 100%;
+  height: 380px;
+  border-radius: 6px;
+  overflow: hidden;
+}
 .stats-panel {
   grid-column: 2;
   grid-row: 1;
@@ -242,4 +276,133 @@ h3 {
   color: #6b7d9c;
   text-transform: uppercase;
   margin: 0.8rem 0 0.4rem;
+}
+
+/* Metrics page */
+.metrics-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.range-selector {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.range-button {
+  font-family: inherit;
+  font-size: 0.82rem;
+  color: #93a4bf;
+  background: #111a2b;
+  border: 1px solid #1f2c42;
+  border-radius: 4px;
+  padding: 0.3rem 0.8rem;
+  cursor: pointer;
+}
+.range-button:hover {
+  color: #d7e0ee;
+}
+.range-button.active {
+  color: #60a5fa;
+  border-color: #60a5fa;
+  background: #16233a;
+}
+
+.report-button {
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: #0b1220;
+  background: #60a5fa;
+  border: none;
+  border-radius: 4px;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+.report-button:hover {
+  background: #7db4fb;
+}
+.report-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.metrics-tile.tile-wide {
+  grid-column: 1 / -1;
+}
+
+.fade-in {
+  animation: fade-slide-in 260ms ease-out;
+}
+@keyframes fade-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fade-in {
+    animation: none;
+  }
+  .attack-pin {
+    animation: none;
+  }
+}
+
+/* Hero 3D country chart — tilted CSS 3D column chart */
+.hero-tile {
+  overflow-x: auto;
+}
+.hero-3d {
+  perspective: 900px;
+  padding: 2rem 1rem 0.5rem;
+}
+.hero-3d-stage {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1.5rem;
+  min-height: 170px;
+  transform: rotateX(38deg) rotateZ(-6deg);
+  transform-style: preserve-3d;
+}
+.hero-bar3d {
+  position: relative;
+  width: 30px;
+  height: var(--h);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 85%, white 15%), var(--c));
+  border-radius: 2px 2px 0 0;
+  box-shadow: 4px 6px 10px rgba(0, 0, 0, 0.45), inset -3px 0 6px rgba(0, 0, 0, 0.25);
+  transition: height 300ms ease-out;
+}
+.hero-bar3d-count {
+  position: absolute;
+  top: -1.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: #d7e0ee;
+  white-space: nowrap;
+}
+.hero-bar3d-label {
+  position: absolute;
+  bottom: -1.3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.68rem;
+  font-family: monospace;
+  color: #93a4bf;
+  white-space: nowrap;
 }
