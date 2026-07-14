@@ -1,0 +1,70 @@
+# Production/VPS deployment. Do not run this on your home network.
+#
+# Cowrie is public here, but the backend is not. The frontend container serves
+# the static dashboard and proxies /api + /ws to the private backend network.
+# Apply infra/iptables-honeypot-egress.sh on the VPS after the stack starts
+# and before opening traffic broadly.
+
+services:
+  cowrie:
+    image: cowrie/cowrie:latest
+    container_name: honeypot-cowrie
+    ports:
+      - "${HONEYPOT_BIND_IP:-0.0.0.0}:${HONEYPOT_SSH_PORT:-2222}:2222"
+      - "${HONEYPOT_BIND_IP:-0.0.0.0}:${HONEYPOT_TELNET_PORT:-2223}:2223"
+    volumes:
+      - cowrie_logs:/cowrie/cowrie-git/var/log/cowrie
+    restart: unless-stopped
+    networks:
+      - cowrie_net
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    cpus: 0.5
+    pids_limit: 128
+
+  backend:
+    build:
+      context: ../backend
+    container_name: honeypot-backend
+    environment:
+      COWRIE_LOG_PATH: /var/log/cowrie/cowrie.json
+      HONEYPOT_DB_PATH: /data/honeypot.db
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-}"
+    volumes:
+      - cowrie_logs:/var/log/cowrie:ro
+      - honeypot_data:/data
+    restart: unless-stopped
+    expose:
+      - "8000"
+    networks:
+      - dashboard_net
+    depends_on:
+      - cowrie
+
+  frontend:
+    build:
+      context: ../frontend
+    container_name: honeypot-dashboard
+    ports:
+      - "${DASHBOARD_BIND_IP:-0.0.0.0}:${DASHBOARD_HTTP_PORT:-80}:80"
+    restart: unless-stopped
+    networks:
+      - dashboard_net
+    depends_on:
+      - backend
+
+networks:
+  cowrie_net:
+    driver: bridge
+  dashboard_net:
+    driver: bridge
+
+volumes:
+  cowrie_logs:
+  honeypot_data:
