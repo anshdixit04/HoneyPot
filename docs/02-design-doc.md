@@ -248,5 +248,7 @@ Each ttylog is a sequence of frames: a 24-byte little-endian header (`struct` fo
 ### 9.4 Honesty framing
 The replay modal states explicitly that this is real attacker input against Cowrie's *simulated* shell, not a real compromised system — consistent with the project's broader stance of never fabricating or embellishing attack data.
 
-### 9.5 Known follow-up
-Ttylogs are binary and accumulate indefinitely with no retention policy yet — same class of problem as the JSON event log, needs a prune-after-N-days step before this runs unattended for a long stretch.
+### 9.5 Retention
+Ttylogs are binary and would otherwise accumulate indefinitely (same class of problem as the JSON event log). `replay.prune_old_ttylogs()` deletes files whose mtime is older than `TTYLOG_RETENTION_DAYS` (default 14, configurable in `infra/.env.prod`); `store.clear_missing_ttylogs()` reconciles the DB afterward so a session whose recording was pruned correctly shows "no recording" instead of a dead link. Both run from a background loop (`retention_loop()` in `main.py`) once every 24h. Requires the backend's `cowrie_tty` volume mount to be read-write (not `:ro`), unlike the JSON log mount.
+
+Known remaining gap: no equivalent retention exists yet for the JSON event log or the SQLite `events` table itself, both of which also grow unboundedly. Not addressed here — same fix shape (age-based pruning) would apply if it becomes a problem.

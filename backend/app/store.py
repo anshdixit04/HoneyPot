@@ -6,6 +6,7 @@ contracts). Uses the `events` table defined in db.py.
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from app import replay
 from app.db import connect
 
 
@@ -98,3 +99,22 @@ def get_session(session_id: str) -> Optional[dict]:
             (session_id,),
         ).fetchone()
     return dict(row) if row else None
+
+
+def clear_missing_ttylogs() -> int:
+    """Clears sessions.ttylog_path for any session whose recording file
+    no longer exists on disk (e.g. removed by replay.prune_old_ttylogs),
+    so the UI correctly shows "no recording" instead of a dead link.
+    Returns the number of rows cleared."""
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT session_id, ttylog_path FROM sessions WHERE ttylog_path IS NOT NULL"
+        ).fetchall()
+        cleared = 0
+        for row in rows:
+            if not replay.ttylog_exists(row["ttylog_path"]):
+                conn.execute(
+                    "UPDATE sessions SET ttylog_path = NULL WHERE session_id = ?", (row["session_id"],)
+                )
+                cleared += 1
+    return cleared

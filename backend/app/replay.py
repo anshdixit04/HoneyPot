@@ -14,9 +14,13 @@ same as how asciinema itself only records stdout) are kept; OP_CLOSE
 ends the session.
 """
 import json
+import logging
 import os
 import struct
+import time
 from typing import Optional
+
+logger = logging.getLogger("honeypot-backend")
 
 OP_CLOSE = 2
 OP_WRITE = 3
@@ -97,3 +101,25 @@ def build_asciicast(filename: str) -> Optional[str]:
     lines = [header_line]
     lines.extend(json.dumps([round(t, 6), "o", text]) for t, text in frames)
     return "\n".join(lines) + "\n"
+
+
+def prune_old_ttylogs(days: int) -> int:
+    """Deletes ttylog files last modified more than `days` ago. Ttylogs
+    are binary and accumulate forever otherwise (see docs/02-design-doc.md
+    section 9.5). Returns the number of files deleted; never raises —
+    called from a background loop that should keep running even if one
+    file can't be removed."""
+    if not os.path.isdir(TTYLOG_DIR):
+        return 0
+
+    cutoff = time.time() - days * 86400
+    deleted = 0
+    for name in os.listdir(TTYLOG_DIR):
+        path = os.path.join(TTYLOG_DIR, name)
+        try:
+            if os.path.isfile(path) and os.path.getmtime(path) < cutoff:
+                os.remove(path)
+                deleted += 1
+        except OSError as exc:
+            logger.warning("Could not prune ttylog %s: %s", name, exc)
+    return deleted

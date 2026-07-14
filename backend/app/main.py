@@ -42,6 +42,11 @@ COWRIE_LOG_PATH = os.environ.get(
     os.path.join(os.path.dirname(__file__), "..", "..", "data", "cowrie-logs", "cowrie.json"),
 )
 
+# Ttylogs are binary and accumulate forever otherwise (docs/02-design-doc.md
+# section 9.5). Files older than this get deleted by retention_loop().
+TTYLOG_RETENTION_DAYS = int(os.environ.get("TTYLOG_RETENTION_DAYS", "14"))
+RETENTION_INTERVAL_SECONDS = 24 * 60 * 60
+
 
 class ConnectionManager:
     def __init__(self):
@@ -93,12 +98,25 @@ async def event_pump():
         await manager.broadcast(event)
 
 
+async def retention_loop():
+    """Background task: once a day, deletes ttylog files older than
+    TTYLOG_RETENTION_DAYS and clears the DB references to them."""
+    while True:
+        deleted = await asyncio.to_thread(replay.prune_old_ttylogs, TTYLOG_RETENTION_DAYS)
+        cleared = await asyncio.to_thread(store.clear_missing_ttylogs)
+        if deleted or cleared:
+            logger.info("Ttylog retention: deleted %d file(s), cleared %d session reference(s)", deleted, cleared)
+        await asyncio.sleep(RETENTION_INTERVAL_SECONDS)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
     task = asyncio.create_task(event_pump())
+    retention_task = asyncio.create_task(retention_loop())
     yield
     task.cancel()
+    retention_task.cancel()
 
 
 app = FastAPI(title="Honeypot Attack Map — Backend", lifespan=lifespan)
