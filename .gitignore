@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Cowrie
+honeypot/cowrie/var/
+honeypot/cowrie/log/
+data/cowrie-logs/
+*.json.*
+
+# DB
+*.sqlite3
+*.db
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# OS
+.DS_Store
+Thumbs.db
