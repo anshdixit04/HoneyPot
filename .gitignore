@@ -28,3 +28,6 @@ data/cowrie-logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# Editor/tooling
+.claude/
