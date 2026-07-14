@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
-import LivePage from "./pages/LivePage.jsx";
-import MetricsPage from "./pages/MetricsPage.jsx";
 import AboutPanel from "./components/AboutPanel.jsx";
 import { WS_URL, fetchEvents, fetchStats } from "./api.js";
 import "./App.css";
+
+// Route-level code splitting: LivePage pulls in react-globe.gl/three,
+// MetricsPage pulls in recharts — keep each out of the other's bundle.
+const LivePage = lazy(() => import("./pages/LivePage.jsx"));
+const MetricsPage = lazy(() => import("./pages/MetricsPage.jsx"));
 
 export default function App() {
   const [events, setEvents] = useState([]);
@@ -93,10 +96,12 @@ export default function App() {
             <span className={`ws-status ${status}`}>WebSocket: {status}</span>
           </div>
         </header>
-        <Routes>
-          <Route path="/" element={<LivePage events={events} stats={stats} />} />
-          <Route path="/metrics" element={<MetricsPage />} />
-        </Routes>
+        <Suspense fallback={<div className="route-loading">Loading…</div>}>
+          <Routes>
+            <Route path="/" element={<LivePage events={events} stats={stats} />} />
+            <Route path="/metrics" element={<MetricsPage />} />
+          </Routes>
+        </Suspense>
         {showAbout && <AboutPanel onClose={() => setShowAbout(false)} />}
       </div>
     </BrowserRouter>
