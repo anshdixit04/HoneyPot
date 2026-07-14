@@ -1,0 +1,174 @@
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: #0b1220;
+  color: #d7e0ee;
+  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.dashboard {
+  padding: 1rem 1.5rem;
+}
+
+header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+header h1 {
+  font-size: 1.4rem;
+  margin: 0;
+}
+
+.ws-status {
+  font-family: monospace;
+  font-size: 0.85rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  background: #1b2635;
+}
+.ws-status.connected {
+  color: #4ade80;
+}
+.ws-status.disconnected,
+.ws-status.error {
+  color: #f87171;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 1rem;
+}
+
+.panel {
+  background: #111a2b;
+  border: 1px solid #1f2c42;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.panel h2 {
+  margin-top: 0;
+  font-size: 1rem;
+  color: #93a4bf;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.world-map {
+  grid-column: 1;
+  grid-row: 1;
+}
+.stats-panel {
+  grid-column: 2;
+  grid-row: 1;
+}
+.event-feed {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: monospace;
+  font-size: 0.82rem;
+}
+th,
+td {
+  text-align: left;
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid #1f2c42;
+}
+th {
+  color: #93a4bf;
+  font-weight: 500;
+}
+
+.event-type.login_attempt {
+  color: #fbbf24;
+}
+.event-type.command_input {
+  color: #f87171;
+}
+.event-type.connection {
+  color: #60a5fa;
+}
+
+.attack-pin {
+  animation: pin-in 0.6s ease-out;
+}
+@keyframes pin-in {
+  from {
+    r: 10;
+    opacity: 0;
+  }
+  to {
+    r: 4;
+    opacity: 1;
+  }
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 30px;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  margin-bottom: 0.35rem;
+}
+.bar-label {
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bar-track {
+  background: #1b2635;
+  border-radius: 3px;
+  height: 8px;
+  overflow: hidden;
+}
+.bar-fill {
+  background: #60a5fa;
+  height: 100%;
+}
+.bar-count {
+  text-align: right;
+  color: #93a4bf;
+}
+
+.hour-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 64px;
+  margin-top: 0.5rem;
+}
+.hour-bar {
+  flex: 1;
+  background: #60a5fa;
+  border-radius: 2px 2px 0 0;
+  min-height: 4px;
+}
+
+.empty {
+  color: #4b5875;
+  font-size: 0.8rem;
+}
+
+h3 {
+  font-size: 0.78rem;
+  color: #6b7d9c;
+  text-transform: uppercase;
+  margin: 0.8rem 0 0.4rem;
+}
