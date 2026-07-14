@@ -13,6 +13,7 @@ dist/
 honeypot/cowrie/var/
 honeypot/cowrie/log/
 data/cowrie-logs/
+data/cowrie-tty/
 *.json.*
 
 # DB

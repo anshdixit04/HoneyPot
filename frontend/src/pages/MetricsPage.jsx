@@ -13,6 +13,7 @@ import {
 import { fetchStats } from "../api.js";
 import HeroCountryChart from "../components/HeroCountryChart.jsx";
 import ReportButton from "../components/ReportButton.jsx";
+import SessionsPanel from "../components/SessionsPanel.jsx";
 
 const RANGES = [
   { value: "24h", label: "24h" },
@@ -150,6 +151,7 @@ export default function MetricsPage() {
         </div>
 
         <HeroCountryChart data={countrySeries} />
+        <SessionsPanel range={range} />
       </div>
     </div>
   );

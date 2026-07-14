@@ -14,6 +14,8 @@ services:
       - "${HONEYPOT_BIND_IP:-0.0.0.0}:${HONEYPOT_TELNET_PORT:-2223}:2223"
     volumes:
       - cowrie_logs:/cowrie/cowrie-git/var/log/cowrie
+      # Session recordings, shared read-only with the backend for replay.
+      - cowrie_tty:/cowrie/cowrie-git/var/lib/cowrie/tty
     restart: unless-stopped
     networks:
       - cowrie_net
@@ -35,9 +37,11 @@ services:
     environment:
       COWRIE_LOG_PATH: /var/log/cowrie/cowrie.json
       HONEYPOT_DB_PATH: /data/honeypot.db
+      TTYLOG_DIR: /var/lib/cowrie-tty
       ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-}"
     volumes:
       - cowrie_logs:/var/log/cowrie:ro
+      - cowrie_tty:/var/lib/cowrie-tty:ro
       - honeypot_data:/data
     restart: unless-stopped
     expose:
@@ -67,4 +71,5 @@ networks:
 
 volumes:
   cowrie_logs:
+  cowrie_tty:
   honeypot_data:

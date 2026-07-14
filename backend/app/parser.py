@@ -73,3 +73,28 @@ def parse_line(raw_line: str) -> Optional[dict]:
         "session_id": raw.get("session"),
     }
     return event
+
+
+def parse_log_closed(raw_line: str) -> Optional[dict]:
+    """`cowrie.log.closed` carries the session's ttylog filename (the raw
+    per-keystroke recording used for session replay). It's session
+    metadata, not an attack event, so it's parsed separately from
+    parse_line() and never goes through the events table/broadcast."""
+    raw_line = raw_line.strip()
+    if not raw_line:
+        return None
+
+    try:
+        raw = json.loads(raw_line)
+    except json.JSONDecodeError:
+        return None
+
+    if raw.get("eventid") != "cowrie.log.closed":
+        return None
+
+    session_id = raw.get("session")
+    ttylog = raw.get("ttylog")
+    if not session_id or not ttylog:
+        return None
+
+    return {"session_id": session_id, "ttylog_filename": ttylog.rsplit("/", 1)[-1]}

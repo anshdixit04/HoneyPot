@@ -72,13 +72,29 @@ def get_stats(hours: int = 24) -> dict:
     }
 
 
+_SESSION_COLUMNS = """
+    s.session_id, s.src_ip, s.first_seen, s.last_seen, s.event_count,
+    s.credentials, s.commands, s.ttylog_path,
+    (SELECT country FROM events e WHERE e.session_id = s.session_id AND e.country IS NOT NULL LIMIT 1) AS country,
+    (SELECT city FROM events e WHERE e.session_id = s.session_id AND e.city IS NOT NULL LIMIT 1) AS city
+"""
+
+
 def get_top_sessions(hours: int = 24, limit: int = 8) -> list:
     since = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
     with connect() as conn:
         rows = conn.execute(
-            """SELECT session_id, src_ip, first_seen, last_seen, event_count, credentials, commands
-               FROM sessions WHERE last_seen >= ?
-               ORDER BY event_count DESC LIMIT ?""",
+            f"""SELECT {_SESSION_COLUMNS} FROM sessions s WHERE s.last_seen >= ?
+               ORDER BY s.event_count DESC LIMIT ?""",
             (since, limit),
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+def get_session(session_id: str) -> Optional[dict]:
+    with connect() as conn:
+        row = conn.execute(
+            f"SELECT {_SESSION_COLUMNS} FROM sessions s WHERE s.session_id = ?",
+            (session_id,),
+        ).fetchone()
+    return dict(row) if row else None

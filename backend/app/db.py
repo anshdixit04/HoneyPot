@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     last_seen TEXT NOT NULL,
     event_count INTEGER NOT NULL DEFAULT 0,
     credentials TEXT NOT NULL DEFAULT '',
-    commands TEXT NOT NULL DEFAULT ''
+    commands TEXT NOT NULL DEFAULT '',
+    ttylog_path TEXT
 );
 
 CREATE TABLE IF NOT EXISTS events (
@@ -58,6 +59,15 @@ def init_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     with connect() as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Additive column migrations for databases created before they existed.
+    `CREATE TABLE IF NOT EXISTS` above only helps on a fresh DB."""
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(sessions)")}
+    if "ttylog_path" not in columns:
+        conn.execute("ALTER TABLE sessions ADD COLUMN ttylog_path TEXT")
 
 
 @contextmanager

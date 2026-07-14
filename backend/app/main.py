@@ -25,12 +25,12 @@ except ModuleNotFoundError:
 # cloud-sync folder (see infra/docker-compose.yml for why).
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import db, geoip, report, sessions, store
+from app import db, geoip, replay, report, sessions, store
 from app.log_tailer import tail_file
-from app.parser import parse_line
+from app.parser import parse_line, parse_log_closed
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("honeypot-backend")
@@ -75,6 +75,13 @@ async def event_pump():
     """Background task: tails the Cowrie log forever, parses, enriches, broadcasts."""
     logger.info("Watching Cowrie log at %s", COWRIE_LOG_PATH)
     async for raw_line in tail_file(COWRIE_LOG_PATH):
+        log_closed = parse_log_closed(raw_line)
+        if log_closed is not None:
+            await asyncio.to_thread(
+                sessions.record_ttylog, log_closed["session_id"], log_closed["ttylog_filename"]
+            )
+            continue
+
         event = parse_line(raw_line)
         if event is None:
             continue
@@ -130,6 +137,41 @@ async def api_events(limit: int = 100, before: Optional[str] = None):
 async def api_stats(range: str = "24h"):
     stats = await asyncio.to_thread(store.get_stats, _parse_range_hours(range))
     return stats
+
+
+@app.get("/api/sessions")
+async def api_sessions(range: str = "24h", limit: int = 8):
+    hours = _parse_range_hours(range)
+    rows = await asyncio.to_thread(store.get_top_sessions, hours, limit)
+    return {
+        "sessions": [
+            {
+                "session_id": r["session_id"],
+                "src_ip": r["src_ip"],
+                "country": r["country"],
+                "city": r["city"],
+                "first_seen": r["first_seen"],
+                "last_seen": r["last_seen"],
+                "event_count": r["event_count"],
+                "commands": [c for c in (r["commands"] or "").split("\n") if c],
+                "has_replay": bool(r["ttylog_path"]),
+            }
+            for r in rows
+        ]
+    }
+
+
+@app.get("/api/sessions/{session_id}/replay")
+async def api_session_replay(session_id: str):
+    session = await asyncio.to_thread(store.get_session, session_id)
+    if session is None or not session["ttylog_path"]:
+        raise HTTPException(status_code=404, detail="No recording available for this session")
+
+    cast = await asyncio.to_thread(replay.build_asciicast, session["ttylog_path"])
+    if cast is None:
+        raise HTTPException(status_code=404, detail="Recording could not be read")
+
+    return Response(content=cast, media_type="text/plain; charset=utf-8")
 
 
 @app.get("/api/report")

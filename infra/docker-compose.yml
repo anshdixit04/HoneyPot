@@ -42,6 +42,12 @@ services:
       # client's file locking conflicts with Cowrie's log rotation. Set
       # COWRIE_LOG_HOST_DIR in infra/.env to a non-synced directory.
       - ${COWRIE_LOG_HOST_DIR:-../data/cowrie-logs}:/cowrie/cowrie-git/var/log/cowrie
+      # Session recordings (raw keystrokes/output per session), used for
+      # the session-replay feature (docs/02-design-doc.md section 9). This
+      # path isn't covered by any volume mount otherwise, so Cowrie was
+      # writing it to a container-anonymous, ephemeral location before —
+      # this makes it persistent and readable by the backend.
+      - ${COWRIE_TTY_HOST_DIR:-../data/cowrie-tty}:/cowrie/cowrie-git/var/lib/cowrie/tty
     restart: unless-stopped
     networks:
       # Its own dedicated network — no other service/container shares it,

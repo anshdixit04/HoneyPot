@@ -41,6 +41,26 @@ def record_event(event: dict) -> None:
             )
 
 
+def record_ttylog(session_id: str, ttylog_filename: str) -> None:
+    """Attaches the session's ttylog filename once Cowrie closes it out
+    (see parser.parse_log_closed). May arrive before the session row exists
+    if log lines are processed out of order, so upsert rather than assume."""
+    now = datetime.now(timezone.utc).isoformat()
+    with connect() as conn:
+        row = conn.execute("SELECT session_id FROM sessions WHERE session_id = ?", (session_id,)).fetchone()
+        if row is None:
+            conn.execute(
+                """INSERT INTO sessions
+                   (session_id, src_ip, first_seen, last_seen, event_count, credentials, commands, ttylog_path)
+                   VALUES (?, '', ?, ?, 0, '', '', ?)""",
+                (session_id, now, now, ttylog_filename),
+            )
+        else:
+            conn.execute(
+                "UPDATE sessions SET ttylog_path = ? WHERE session_id = ?", (ttylog_filename, session_id)
+            )
+
+
 def _append(existing: str, new: Optional[str]) -> str:
     if not new:
         return existing

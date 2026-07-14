@@ -43,6 +43,18 @@ Swap `WorldMap.jsx` for a new `Globe3D.jsx` using `react-globe.gl` (Three.js-bas
 - Keep manual orbit/zoom/pan enabled so the globe is explorable, not just a passive animation.
 - Cap live arcs at ~50 concurrent (mirror the existing 200-event cap pattern in `App.jsx`) so a burst of bot traffic doesn't kill frame rate.
 
+### Task 1b — Globe refinement pass (rotation speed, realism, arcs, IP lookup)
+`Globe3D.jsx` already exists and implements the baseline above. This task is a polish/feature pass on top of it — read the existing file first, don't rewrite it from scratch.
+
+1. **Rotation speed.** `controls.autoRotateSpeed` is currently `0.35` (a multi-minute orbit). Change it so a full rotation takes about 4-5 seconds. `OrbitControls` speed maps to time as `orbit_seconds ≈ 30 * (2.0 / speed)`, so use `speed ≈ 60 / orbit_seconds` — set `autoRotateSpeed` to roughly **12-15** (13 ≈ 4.6s/rotation). Leave the `prefers-reduced-motion` branch that disables `autoRotate` entirely untouched.
+2. **Make it read as a "real" globe.** Keep the existing `earth-night.jpg` + `earth-topology.png` bump map — don't switch to a daytime texture, the night-lights look already fits the dark theme and looks realistic. Add a starfield `backgroundImageUrl` (three-globe ships one, e.g. `night-sky.png`) so the globe sits in space instead of a flat transparent panel. A slowly-rotating semi-transparent cloud layer (second Three.js sphere via `globeRef.current.scene()`, independent rotation speed) is a nice-to-have — only add it if you've confirmed a real, reachable cloud texture URL; skip it rather than shipping a broken/missing texture.
+3. **Make the arcs look cool.** The attack lines (`arcsData`) already animate; upgrade them from a flat color to a two-stop gradient (`arcColor: [attackerColor, honeypotGreen]`) so each line visibly travels toward the honeypot. Tighten `arcDashAnimateTime` from 1400ms to roughly 900-1100ms and nudge `arcStroke` up slightly for a more visible beam. **Important: only render arcs for real events from the `events` prop — do not add fake/ambient/demo traffic to keep the globe visually busy.** This project's whole pitch is that the data is real; fabricated traffic undermines that if anyone asks how it works.
+4. **Add an IP location lookup.** New button on the globe panel (style it like the existing `.about-button`), opening a small popover with:
+   - A dropdown of recent locations built from `events` already in memory — dedupe by `src_ip`, label `"<ip> — <city>, <country>"`. This needs no new network calls or dependencies.
+   - A free-text IP input that, on submit, does a client-side fetch to a free HTTPS/CORS-enabled GeoIP API (e.g. `https://ipapi.co/<ip>/json/` or `https://ipwho.is/<ip>`) — verify the provider's current CORS/HTTPS/rate-limit terms before wiring it in, since free GeoIP APIs change these often.
+   - On selecting either, reuse the existing zoom pattern from the live-event effect: pause `autoRotate`, `globe.pointOfView({ lat, lng, altitude: 0.5-0.8 }, ~600ms)`, drop a temporary marker, and show a label with city/region/country + rounded lat/lon. **Never claim street-level precision** — that's not what free GeoIP data provides, and the user explicitly wants "whereabouts," not an exact address.
+   - Add a clearly visible "Return to live view" button that clears the marker, resumes rotation, and eases back to `IDLE_VIEW` — unlike the automatic return-after-a-few-seconds behavior used for live events, a manual lookup should stay put until the user dismisses it.
+
 ### Task 2 — Add a separate metrics dashboard route
 Add `react-router-dom`. Two routes:
 - `/` — today's live view (globe + event feed), largely as-is structurally.

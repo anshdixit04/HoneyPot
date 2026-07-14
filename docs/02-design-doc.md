@@ -171,6 +171,21 @@ Status: Draft v1, planned. This is the "recruiter polish" phase referenced in th
 - Color-code arcs/points by `event_type` (login_attempt / command_input / connection) using the existing status palette, so the globe carries the same meaning as today's pin colors.
 - Performance guard: cap simultaneous animated arcs (e.g. keep last ~50 live, same pattern as the existing 200-event cap in `App.jsx`) so a burst of bot traffic doesn't tank frame rate.
 
+**Implementation status:** `frontend/src/components/Globe3D.jsx` exists and does the above (earth-night texture + bump map, arcs/rings/points off the live event stream, zoom-on-event via `pointOfView()`). The `HONEYPOT` point (green dot) is the fixed VPS location arcs converge on — this is already correct behavior, not a bug. The subsections below are a refinement pass on top of that baseline, not a rewrite.
+
+#### 8.2.1 Refinement — faster rotation, more realistic globe, cooler arcs
+- **Rotation speed:** current idle `controls.autoRotateSpeed = 0.35` is too slow (roughly a 3-minute orbit). Target a full rotation every 4-5 seconds. `OrbitControls.autoRotateSpeed` follows `orbit_seconds ≈ 30 * (2.0 / speed)`, so `speed ≈ 60 / orbit_seconds` — set `autoRotateSpeed` to roughly **12-15** (13 ≈ 4.6s/rotation). Keep the existing `prefers-reduced-motion` check that disables `autoRotate` entirely — a fast-spinning globe is exactly the kind of motion that setting exists to suppress.
+- **More realistic globe:** keep the existing `earth-night.jpg` + `earth-topology.png` bump map (a real night-lights texture already reads as "a real globe," and matches the dark theme better than a daytime blue-marble look). Add a starfield background (`backgroundImageUrl`, e.g. `three-globe`'s bundled `night-sky.png`) so the globe sits in a black starfield rather than the flat transparent panel background — this is the single highest-impact realism change for the least effort. A rotating semi-transparent cloud layer is a reasonable stretch goal (Three.js: a second sphere slightly larger than the globe, rotating at its own independent speed via `globeRef.current.scene()`), but only take it on if a reliable cloud texture asset is confirmed reachable first — don't ship a broken/missing-texture globe chasing this detail.
+- **Cooler arcs:** the arc lines already exist (`arcsData`) but should read as more of a "signal" than a thin line. Use a two-stop gradient color per arc (`arcColor` as `[originColor, honeypotColor]` rather than a flat color) so each line visibly travels from the attacker's color toward the honeypot's green. Shorten `arcDashAnimateTime` slightly (from 1400ms toward ~900-1100ms) and increase `arcStroke` a touch for a more visible "beam" without turning it into a thick blob. **Do not fabricate ambient/demo arcs when there's no live traffic** — this dashboard's entire value proposition is that the data is real attacker activity, not a simulation; an idle globe with occasional real arcs is honest and still reads as "live," a globe that's always busy with fake traffic undermines the project's credibility if a recruiter asks about it.
+
+#### 8.2.2 New sub-feature — IP location lookup
+A "Look up IP" affordance on the globe panel, separate from the passive live-event zoom already described above.
+
+- **UI:** a button (styled like the existing `.about-button`) opens a small popover/panel with two ways to pick a location:
+  1. **Recent locations dropdown** — populated straight from `events` already in memory (dedupe by `src_ip`, label each option `"<ip> — <city>, <country>"`). Zero new dependencies or network calls; always populated once any traffic has been seen.
+  2. **Free-text IP field** — user types an arbitrary IP address; on submit, do a client-side GeoIP lookup against a free, HTTPS, CORS-enabled provider (e.g. `ipapi.co/<ip>/json/` or `ipwho.is/<ip>` — confirm current CORS/HTTPS/rate-limit behavior before wiring this up, since providers change terms). This is a separate, ad-hoc lookup path — it does not touch the honeypot's own server-side GeoIP pipeline (Section 3) or the `/api/events` contract.
+- **Zoom behavior:** on selecting a location (from either path), reuse the existing per-event zoom pattern in `Globe3D.jsx` (`controls.autoRotate = false` → `globe.pointOfView({ lat, lng, altitude: ~0.5-0.8 }, ~600ms)`), drop a temporary marker at that point, and show a small label with city/region/country and rounded lat/lon — explicitly **not** street-level detail, matching what a free GeoIP lookup can honestly provide. Add a visible "Return to live view" control that clears the marker, resumes `autoRotate`, and eases the camera back to `IDLE_VIEW`, mirroring the existing `RETURN_DELAY_MS` auto-return behavior used for live events (except lookups should wait for the user to dismiss rather than auto-returning on a timer, since the user asked to look at that spot on purpose).
+
 ### 8.3 New capability 2 — separate 3D metrics dashboard
 A second route/view (`/metrics`), not a panel bolted onto the main screen — the existing single-page grid stays as the "live" view; this is a distinct dashboard for aggregate stats.
 
@@ -212,3 +227,26 @@ Keep the existing dark theme as the base — it already reads as a credible secu
 3. Build out `/metrics` with `recharts` first (fast, functional), then layer in the 1-2 hero 3D visuals.
 4. Add the report generator, starting with the client-side `jspdf` fallback if a quick demo is needed, upgrading to the backend PDF endpoint when time allows.
 5. Pass over the whole app applying Section 8.6's design tokens/motion consistently, last — polish after function.
+
+## 9. Session Replay
+
+Status: Implemented. Turns the "notable sessions" data already used by the PDF report into an actual watchable recording — an attacker's real keystrokes and Cowrie's simulated-shell output, scrubbable like a terminal recording, not just a list of typed commands.
+
+### 9.1 Why Cowrie's own ttylog, not our parsed events
+Our own `command_input` events only capture completed commands, missing backspaces, tab-completion, and the shell's actual responses. Cowrie already records the full raw session per connection as a binary "ttylog" file (referenced by the `cowrie.log.closed` event's `ttylog` field). Replaying that directly is strictly richer than reconstructing a weaker version from our own event log, and required no changes to Cowrie itself.
+
+### 9.2 Ttylog format
+Each ttylog is a sequence of frames: a 24-byte little-endian header (`struct` format `<iLiiLL`: op, tty, length, direction, sec, usec) followed by `length` bytes of raw payload. `op` is `OP_WRITE` (3) for data frames or `OP_CLOSE` (2) to end the session; `direction` distinguishes `TYPE_INPUT` (1, raw keystrokes) from `TYPE_OUTPUT` (2, the shell's echoed/produced output). Only `OP_WRITE` frames matching the *first* direction seen in the session are kept — in practice always the output stream, since a real PTY echoes typed characters back as part of its own output, so a viewer never needs the separate input stream to see what was typed. Format confirmed against Cowrie's own `src/cowrie/scripts/asciinema.py`, not reverse-engineered.
+
+### 9.3 Pipeline
+- **Infra**: `var/lib/cowrie/tty` (previously unmounted — Cowrie was writing there via an implicit, ephemeral, container-anonymous location) is now an explicit volume, shared read-only with the backend.
+- **Capture**: `parser.parse_log_closed()` extracts `{session_id, ttylog_filename}` from `cowrie.log.closed` lines, handled as session metadata (`sessions.record_ttylog()`) — separate from the normal event pipeline, since it's not an attack event for the live feed/map.
+- **Conversion**: `backend/app/replay.py` parses the binary ttylog and emits [asciicast v2](https://docs.asciinema.org/manual/asciicast/v2/) text (a JSON header line + one `[time, "o", text]` line per output frame, `\n` normalized to `\r\n` for correct terminal rendering).
+- **API**: `GET /api/sessions?range=&limit=` lists recent sessions (src IP, location, event/command counts, `has_replay`); `GET /api/sessions/{id}/replay` returns the asciicast text for a given session.
+- **Playback**: `asciinema-player` renders the recording client-side, given the API URL directly (its best-supported loading path — passing raw cast text via the library's `data` source option isn't handled by every parser branch, so the URL-based path is used instead).
+
+### 9.4 Honesty framing
+The replay modal states explicitly that this is real attacker input against Cowrie's *simulated* shell, not a real compromised system — consistent with the project's broader stance of never fabricating or embellishing attack data.
+
+### 9.5 Known follow-up
+Ttylogs are binary and accumulate indefinitely with no retention policy yet — same class of problem as the JSON event log, needs a prune-after-N-days step before this runs unattended for a long stretch.
