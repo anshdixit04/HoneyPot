@@ -192,6 +192,22 @@ async def api_session_replay(session_id: str):
     return Response(content=cast, media_type="text/plain; charset=utf-8")
 
 
+@app.get("/api/sessions/{session_id}/replay/steps")
+async def api_session_replay_steps(session_id: str):
+    """Powers the guided "inject the next command" replay UI: the same
+    recording as /replay, but pre-grouped into one step per command
+    instead of raw timed frames (see replay.build_command_steps)."""
+    session = await asyncio.to_thread(store.get_session, session_id)
+    if session is None or not session["ttylog_path"]:
+        raise HTTPException(status_code=404, detail="No recording available for this session")
+
+    steps = await asyncio.to_thread(replay.build_command_steps, session["ttylog_path"])
+    if steps is None:
+        raise HTTPException(status_code=404, detail="Recording could not be read")
+
+    return steps
+
+
 @app.get("/api/report")
 async def api_report(range: str = "24h", format: str = "pdf"):
     hours = _parse_range_hours(range)

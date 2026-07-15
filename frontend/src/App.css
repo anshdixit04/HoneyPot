@@ -529,7 +529,58 @@ h3 {
   margin-top: -0.5rem;
   margin-bottom: 1rem;
 }
-.replay-player {
+.injector-terminal {
+  background: #0b1220;
+  border: 1px solid #1f2c42;
   border-radius: 6px;
-  overflow: hidden;
+  padding: 1rem;
+  margin: 0 0 0.9rem;
+  max-height: 360px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #d7e0ee;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.injector-cursor {
+  color: #4ade80;
+  animation: cursor-blink 1s step-start infinite;
+}
+@keyframes cursor-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .injector-cursor {
+    animation: none;
+  }
+}
+
+.injector-controls {
+  display: flex;
+  justify-content: center;
+}
+
+.injector-inject {
+  font-size: 0.88rem;
+  padding: 0.55rem 1.1rem;
+  color: #4ade80;
+  border-color: #2b5d3f;
+  background: #12241a;
+}
+.injector-inject:hover {
+  background: #17301f;
+}
+.injector-inject code {
+  font-family: monospace;
+  color: #d7e0ee;
+}
+.injector-hint {
+  color: #6b7d9c;
+  font-size: 0.72rem;
+  font-weight: normal;
 }
