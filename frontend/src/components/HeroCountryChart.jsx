@@ -6,7 +6,7 @@ export default function HeroCountryChart({ data }) {
 
   return (
     <div className="panel metrics-tile tile-wide fade-in hero-tile">
-      <h2>Top Countries — 3D</h2>
+      <h2>Top Countries - 3D</h2>
       {top.length === 0 ? (
         <p className="empty">No data yet</p>
       ) : (

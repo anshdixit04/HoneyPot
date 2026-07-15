@@ -1,4 +1,4 @@
-# Local prototype compose file — see docs/03-prototype-spec.md for scope.
+# Local prototype compose file - see docs/03-prototype-spec.md for scope.
 # Cowrie is bound to 127.0.0.1 only. Do NOT change these bindings to 0.0.0.0
 # until Phase 4 (public deployment) in docs/01-build-steps.md is complete.
 #
@@ -11,14 +11,14 @@
 # ports, since Docker won't publish ports on internal-only networks. That
 # broke something more important than it fixed: a plain TCP relay
 # terminates and re-originates the connection, so Cowrie only ever saw the
-# relay's own container IP as src_ip — killing GeoIP/the map, the actual
+# relay's own container IP as src_ip - killing GeoIP/the map, the actual
 # point of this project. Preserving the attacker's real IP requires
 # kernel-level DNAT (which is what Docker's normal `ports:` publishing
-# already uses, and what Cowrie's own docs assume — see the
+# already uses, and what Cowrie's own docs assume - see the
 # `reported_port` comment in cowrie.cfg.dist: "useful if you use iptables
 # to forward ports to Cowrie"), not an application-level proxy. Host-level
 # iptables egress filtering on the real Linux VPS is the correct way to
-# get isolation without losing src_ip — that's a Phase 4 deployment step,
+# get isolation without losing src_ip - that's a Phase 4 deployment step,
 # not something Docker Desktop on Windows can do cleanly. Container-level
 # hardening below (dropped capabilities, read-only root, resource limits)
 # doesn't have this trade-off and is fully in effect now.
@@ -28,7 +28,7 @@ services:
     image: cowrie/cowrie:latest
     container_name: honeypot-cowrie
     ports:
-      # host:container — SSH honeypot on 2222, Telnet on 2223.
+      # host:container - SSH honeypot on 2222, Telnet on 2223.
       - "127.0.0.1:2222:2222"
       - "127.0.0.1:2223:2223"
     volumes:
@@ -45,12 +45,12 @@ services:
       # Session recordings (raw keystrokes/output per session), used for
       # the session-replay feature (docs/02-design-doc.md section 9). This
       # path isn't covered by any volume mount otherwise, so Cowrie was
-      # writing it to a container-anonymous, ephemeral location before —
+      # writing it to a container-anonymous, ephemeral location before -
       # this makes it persistent and readable by the backend.
       - ${COWRIE_TTY_HOST_DIR:-../data/cowrie-tty}:/cowrie/cowrie-git/var/lib/cowrie/tty
     restart: unless-stopped
     networks:
-      # Its own dedicated network — no other service/container shares it,
+      # Its own dedicated network - no other service/container shares it,
       # so a compromised Cowrie has no Docker-network path to anything
       # else on this host beyond what Docker Desktop's host-gateway DNS
       # (host.docker.internal) exposes (a Windows/Mac Docker Desktop

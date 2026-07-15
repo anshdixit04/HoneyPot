@@ -5,7 +5,7 @@ import { WS_URL, fetchEvents, fetchStats } from "./api.js";
 import "./App.css";
 
 // Route-level code splitting: LivePage pulls in react-globe.gl/three,
-// MetricsPage pulls in recharts — keep each out of the other's bundle.
+// MetricsPage pulls in recharts - keep each out of the other's bundle.
 const LivePage = lazy(() => import("./pages/LivePage.jsx"));
 const MetricsPage = lazy(() => import("./pages/MetricsPage.jsx"));
 
@@ -43,7 +43,7 @@ export default function App() {
       ws.onopen = () => {
         attempt = 0;
         setStatus("connected");
-        // We may have missed events while disconnected — backfill.
+        // We may have missed events while disconnected - backfill.
         fetchEvents(200).then(setEvents).catch(() => {});
         fetchStats().then(setStats).catch(() => {});
       };

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Globe from "react-globe.gl";
 
-// Approximate location of the honeypot VPS (NYC1 datacenter) — arcs
+// Approximate location of the honeypot VPS (NYC1 datacenter) - arcs
 // converge here regardless of exact host, so this is intentionally coarse.
 const HONEYPOT = { lat: 40.7128, lng: -74.006 };
 const HONEYPOT_COLOR = "#4ade80";
@@ -49,7 +49,7 @@ async function geoLookupIp(ip) {
 
 function formatLookupLabel(loc) {
   const place = [loc.city, loc.region, loc.country].filter(Boolean).join(", ");
-  return `${loc.ip ? `${loc.ip} — ` : ""}${place || "Unknown location"} (${roundCoord(loc.lat)}, ${roundCoord(loc.lng)})`;
+  return `${loc.ip ? `${loc.ip} - ` : ""}${place || "Unknown location"} (${roundCoord(loc.lat)}, ${roundCoord(loc.lng)})`;
 }
 
 export default function Globe3D({ events }) {
@@ -232,7 +232,7 @@ export default function Globe3D({ events }) {
               </option>
               {recentLocations.map((e) => (
                 <option key={e.src_ip} value={e.src_ip}>
-                  {e.src_ip} — {[e.city, e.country].filter(Boolean).join(", ") || "unknown"}
+                  {e.src_ip} - {[e.city, e.country].filter(Boolean).join(", ") || "unknown"}
                 </option>
               ))}
             </select>

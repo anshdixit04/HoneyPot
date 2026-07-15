@@ -1,7 +1,7 @@
 """
 Per-session aggregation: credentials tried + commands typed, keyed by
 Cowrie's session_id (see docs/02-design-doc.md section 3). Upserted as
-events arrive so the `sessions` table stays current without a batch job —
+events arrive so the `sessions` table stays current without a batch job -
 this is what makes attacker session replay possible later.
 """
 from datetime import datetime, timezone

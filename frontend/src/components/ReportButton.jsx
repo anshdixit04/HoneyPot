@@ -28,7 +28,7 @@ export default function ReportButton({ range }) {
 
   return (
     <button className="report-button" onClick={handleClick} disabled={state === "loading"}>
-      {state === "loading" ? "Generating…" : state === "error" ? "Failed — retry" : "Generate Report"}
+      {state === "loading" ? "Generating…" : state === "error" ? "Failed - retry" : "Generate Report"}
     </button>
   );
 }

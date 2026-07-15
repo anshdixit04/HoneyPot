@@ -8,7 +8,7 @@ src/cowrie/scripts/asciinema.py, the source of truth for this format):
 each frame is a 24-byte little-endian header `<iLiiLL` -- (op, tty,
 length, direction, sec, usec) -- followed by `length` bytes of raw
 payload. Only OP_WRITE frames matching the session's "preferred
-direction" (whichever direction the first write used — in practice the
+direction" (whichever direction the first write used - in practice the
 fake shell's own output stream, since that's what a viewer should see,
 same as how asciinema itself only records stdout) are kept; OP_CLOSE
 ends the session.
@@ -30,7 +30,7 @@ OP_WRITE = 3
 # ANSI codes: \x1b[4h right before showing the prompt, \x1b[4l right
 # after the typed line is echoed back and before the command's output
 # starts. This is a reliable, content-independent way to find command
-# boundaries — it doesn't depend on knowing the fake hostname/prompt
+# boundaries - it doesn't depend on knowing the fake hostname/prompt
 # string, which varies per session.
 IRM_ON = "\x1b[4h"
 IRM_OFF = "\x1b[4l"
@@ -56,9 +56,9 @@ def ttylog_exists(filename: str) -> bool:
 
 
 def _parse_frames(filename: str) -> Optional[list[tuple[float, str]]]:
-    """Reads a ttylog file into (relative_seconds, text) frames — only
+    """Reads a ttylog file into (relative_seconds, text) frames - only
     the direction the session's first OP_WRITE used (in practice the
-    shell's own output stream, which is what a viewer should see — see
+    shell's own output stream, which is what a viewer should see - see
     the module docstring above). Returns None if missing/empty."""
     path = ttylog_path(filename)
     if not os.path.isfile(path):
@@ -131,8 +131,8 @@ def _clean(text: str) -> str:
 
 
 def build_command_steps(filename: str) -> Optional[dict]:
-    """Groups a ttylog's frames into a `{banner, steps}` structure — one
-    step per command, each `{prompt, command, output}` — instead of a
+    """Groups a ttylog's frames into a `{banner, steps}` structure - one
+    step per command, each `{prompt, command, output}` - instead of a
     raw timed playback. This is what drives the guided "inject the next
     command" UI: the frontend reveals one step at a time on request,
     rather than auto-playing the whole thing.
@@ -153,7 +153,7 @@ def build_command_steps(filename: str) -> Optional[dict]:
     first_on = next((i for i, t in enumerate(texts) if IRM_ON in t), None)
     if first_on is None:
         # No command cycles at all (e.g. connection closed before any
-        # input) — just the initial banner/output, no steps.
+        # input) - just the initial banner/output, no steps.
         return {"banner": _clean("".join(texts)), "steps": []}
 
     banner = _clean("".join(texts[:first_on]))
@@ -201,7 +201,7 @@ def build_command_steps(filename: str) -> Optional[dict]:
 def prune_old_ttylogs(days: int) -> int:
     """Deletes ttylog files last modified more than `days` ago. Ttylogs
     are binary and accumulate forever otherwise (see docs/02-design-doc.md
-    section 9.5). Returns the number of files deleted; never raises —
+    section 9.5). Returns the number of files deleted; never raises -
     called from a background loop that should keep running even if one
     file can't be removed."""
     if not os.path.isdir(TTYLOG_DIR):

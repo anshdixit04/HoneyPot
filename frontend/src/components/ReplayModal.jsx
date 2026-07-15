@@ -56,7 +56,7 @@ export default function ReplayModal({ sessionId, onClose }) {
   // Auto-focus the inject button so the browser's native "Enter/Space
   // activates the focused button" behavior covers the "press Enter"
   // hint, instead of a custom global keydown listener (which would fire
-  // on any Enter press anywhere on the page while this modal is open —
+  // on any Enter press anywhere on the page while this modal is open -
   // too broad, and easy to trigger unintentionally).
   useEffect(() => {
     if (state === "ready" && revealed < steps.length) {
@@ -74,7 +74,7 @@ export default function ReplayModal({ sessionId, onClose }) {
         </button>
         <h2>Session Replay</h2>
         <p className="replay-note">
-          Real attacker input against Cowrie&rsquo;s simulated shell — not a real compromised system.
+          Real attacker input against Cowrie&rsquo;s simulated shell - not a real compromised system.
           Inject each command yourself to see what happened next.
         </p>
 
@@ -121,7 +121,7 @@ export default function ReplayModal({ sessionId, onClose }) {
               ) : steps.length === 0 ? (
                 <p className="empty">No commands were typed in this session.</p>
               ) : (
-                <p className="empty">— session ended —</p>
+                <p className="empty">- session ended -</p>
               )}
             </div>
           </>

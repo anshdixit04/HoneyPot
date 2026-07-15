@@ -34,7 +34,7 @@ EVENT_TYPE_MAP = {
 def parse_line(raw_line: str) -> Optional[dict]:
     """Parse one Cowrie JSON log line. Returns None if not a relevant event
     or if the line fails to parse (malformed/partial lines happen during
-    rotation — caller should just skip them, not crash)."""
+    rotation - caller should just skip them, not crash)."""
     raw_line = raw_line.strip()
     if not raw_line:
         return None
@@ -58,7 +58,7 @@ def parse_line(raw_line: str) -> Optional[dict]:
         "id": str(uuid.uuid4()),
         "ts": parsed_ts.isoformat(),
         "src_ip": raw.get("src_ip"),
-        # Filled in by geoip.py — placeholders here so the contract shape
+        # Filled in by geoip.py - placeholders here so the contract shape
         # matches the design doc regardless of enrichment success/failure.
         "country": None,
         "city": None,

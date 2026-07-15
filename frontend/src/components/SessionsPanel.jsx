@@ -45,9 +45,9 @@ export default function SessionsPanel({ range }) {
             {sessions.map((s) => (
               <tr key={s.session_id}>
                 <td>{s.src_ip}</td>
-                <td>{[s.city, s.country].filter(Boolean).join(", ") || "—"}</td>
+                <td>{[s.city, s.country].filter(Boolean).join(", ") || "-"}</td>
                 <td>{s.event_count}</td>
-                <td className="sessions-commands">{s.commands.slice(0, 3).join(", ") || "—"}</td>
+                <td className="sessions-commands">{s.commands.slice(0, 3).join(", ") || "-"}</td>
                 <td>
                   {s.has_replay ? (
                     <button className="about-button" onClick={() => setReplaySessionId(s.session_id)}>

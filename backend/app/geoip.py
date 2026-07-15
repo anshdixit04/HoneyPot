@@ -2,7 +2,7 @@
 GeoIP enrichment via IP-API.com (free, no key, rate-limited to 45 req/min).
 
 Lookups are cached in the `geoip_cache` SQLite table (see db.py) instead of
-an in-memory dict so the cache survives restarts — most bot traffic re-hits
+an in-memory dict so the cache survives restarts - most bot traffic re-hits
 the same IP ranges repeatedly, so a warm cache matters after day one.
 """
 from datetime import datetime, timezone

@@ -1,6 +1,6 @@
 """
 On-demand PDF summary report (see docs/02-design-doc.md section 8.4).
-Renders server-side from the existing SQLite store — no new data source,
+Renders server-side from the existing SQLite store - no new data source,
 just the same aggregates behind /api/stats plus top sessions.
 """
 import io
@@ -59,7 +59,7 @@ def build_report_pdf(range_str: str, hours: int) -> bytes:
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     story = [
-        Paragraph("Live Honeypot Attack Map — Report", title_style),
+        Paragraph("Live Honeypot Attack Map - Report", title_style),
         Paragraph(f"Range: {range_str} &nbsp;&nbsp;|&nbsp;&nbsp; Generated: {generated_at}", meta_style),
         Spacer(1, 4),
         Paragraph(
