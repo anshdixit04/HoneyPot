@@ -26,11 +26,10 @@ HTTPS. Phase 5 (recruiter polish) is in progress.
 
 ## Live Demo
 
-**[partially-competing-advertisers-motorcycles.trycloudflare.com](https://partially-competing-advertisers-motorcycles.trycloudflare.com)**
+**[honeypot-map.xyz](https://honeypot-map.xyz)**
 
-Served over HTTPS via a Cloudflare Tunnel from the VPS. Note: this is a free
-quick Tunnel, so the URL changes if the tunnel process ever restarts - for a
-permanent link, point a real domain at a named Cloudflare Tunnel instead.
+Served over HTTPS via a named Cloudflare Tunnel from the VPS, backed by a
+permanent domain rather than a free quick-Tunnel URL that changes on restart.
 
 ## Docs
 
@@ -103,9 +102,6 @@ trade-offs between "looks alive" and "stays smooth," not overlooked defaults.
 
 ## Known Limitations
 
-- **Live demo URL**: served over a free Cloudflare Quick Tunnel, which changes
-  if the tunnel process restarts (see [Live Demo](#live-demo)). A permanent
-  domain on a named tunnel is the natural next step.
 - **Single instance, no HA**: this is a portfolio demo, not production
   infrastructure - see [`docs/02-design-doc.md`](docs/02-design-doc.md) Section 4.
 - **GeoIP accuracy**: enrichment relies on free-tier GeoIP providers
