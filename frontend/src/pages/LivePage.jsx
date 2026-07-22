@@ -3,11 +3,12 @@ import StatsPanel from "../components/StatsPanel.jsx";
 import EventFeed from "../components/EventFeed.jsx";
 
 export default function LivePage({ events, stats }) {
+  const recentEvents = events.slice(0, 50);
   return (
     <div className="dashboard-grid">
-      <Globe3D events={events} />
+      <Globe3D events={recentEvents} />
       <StatsPanel stats={stats} />
-      <EventFeed events={events} />
+      <EventFeed events={recentEvents} />
     </div>
   );
 }

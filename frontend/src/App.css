@@ -270,6 +270,17 @@ header h1 {
   max-height: 340px;
   overflow-y: auto;
 }
+.event-feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+  position: sticky;
+  top: 0;
+}
+.event-feed-header h2 {
+  margin: 0;
+}
 
 table {
   width: 100%;

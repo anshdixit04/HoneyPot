@@ -1,5 +1,16 @@
 # Live Honeypot Attack Map
 
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-07405E?logo=sqlite&logoColor=white)
+![Three.js](https://img.shields.io/badge/Three.js-black?logo=three.js&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+![Cowrie](https://img.shields.io/badge/Cowrie-Honeypot-critical)
+
+> A production-deployed SSH and Telnet honeypot that captures real attacker
+> behaviour, enriches events with GeoIP information, stores them in SQLite,
+> and streams them to an interactive React and Three.js dashboard.
+
 A real SSH/Telnet honeypot using Cowrie, with live attacker traffic streamed to
 a public dashboard: world map pins, connection attempts, credentials tried, and
 commands typed by actual attackers rather than synthetic data.
@@ -78,6 +89,47 @@ sudo bash infra/iptables-honeypot-egress.sh
 ```
 
 Do this only on a single-purpose VPS, never your home network.
+
+## Performance & UX Decisions
+
+The live dashboard batches incoming WebSocket events and flushes them to React
+state on a fixed ~400ms cadence instead of re-rendering on every message, so a
+burst of attacker activity causes one render instead of dozens. The 3D globe
+throttles camera-follow to at most one focus every few seconds (only for
+higher-value `login_attempt`/`command_input` events), caps arcs/rings, and
+exposes a **Visual mode: Full/Performance** toggle that automatically defaults
+to the lighter mode on narrow or low-core-count devices. These were deliberate
+trade-offs between "looks alive" and "stays smooth," not overlooked defaults.
+
+## Known Limitations
+
+- **Live demo URL**: served over a free Cloudflare Quick Tunnel, which changes
+  if the tunnel process restarts (see [Live Demo](#live-demo)). A permanent
+  domain on a named tunnel is the natural next step.
+- **Single instance, no HA**: this is a portfolio demo, not production
+  infrastructure - see [`docs/02-design-doc.md`](docs/02-design-doc.md) Section 4.
+- **GeoIP accuracy**: enrichment relies on free-tier GeoIP providers
+  (city-level at best, sometimes only country-level) and is subject to their
+  rate limits.
+- **Unbounded raw log growth**: the JSON event log and the SQLite `events`
+  table don't yet have a retention/pruning policy (ttylog session recordings
+  do - see [`docs/02-design-doc.md`](docs/02-design-doc.md) Section 9.5).
+- **Local prototype egress gap**: without host-level `iptables` egress
+  filtering (a Phase 4/VPS-only step), a fully-compromised Cowrie container in
+  the local Docker Desktop prototype can still reach the open internet - see
+  the [Security Note](#security-note) and the design doc's threat model.
+
+## Privacy & GeoIP Disclaimer
+
+Usernames, passwords, and commands shown on the dashboard are real values
+submitted by attackers against Cowrie's simulated shell - not real credentials
+to any actual system, and not personal data belonging to the attackers
+(automated scanners generate the large majority of this traffic). Source IPs
+are geolocated approximately (city/region level, sometimes only country) via
+free third-party GeoIP APIs for both the live pipeline and the on-demand
+"Look up IP" feature; this is not precise personal-location tracking. The
+honeypot's own displayed server location is intentionally coarsened for the
+same reason arcs converge on one fixed point regardless of exact host.
 
 ## Security Note
 

@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 function Bar({ label, count, max }) {
   const pct = max > 0 ? Math.round((count / max) * 100) : 0;
   return (
@@ -11,7 +13,7 @@ function Bar({ label, count, max }) {
   );
 }
 
-export default function StatsPanel({ stats }) {
+function StatsPanel({ stats }) {
   const { top_countries = [], top_credentials = [], connections_by_hour = [] } = stats || {};
   const maxCountry = Math.max(1, ...top_countries.map((c) => c.count));
   const maxCred = Math.max(1, ...top_credentials.map((c) => c.count));
@@ -53,3 +55,5 @@ export default function StatsPanel({ stats }) {
     </div>
   );
 }
+
+export default memo(StatsPanel);

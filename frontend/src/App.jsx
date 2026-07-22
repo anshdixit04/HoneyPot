@@ -9,12 +9,19 @@ import "./App.css";
 const LivePage = lazy(() => import("./pages/LivePage.jsx"));
 const MetricsPage = lazy(() => import("./pages/MetricsPage.jsx"));
 
+const FLUSH_INTERVAL_MS = 400;
+
+function withDisplayTime(event) {
+  return { ...event, displayTime: new Date(event.ts).toLocaleTimeString() };
+}
+
 export default function App() {
   const [events, setEvents] = useState([]);
   const [stats, setStats] = useState(null);
   const [status, setStatus] = useState("connecting");
   const [showAbout, setShowAbout] = useState(false);
   const statsTimerRef = useRef(null);
+  const eventQueueRef = useRef([]);
 
   // Debounce stats refreshes so a burst of live events (e.g. an attacker
   // running several commands in a row) doesn't hammer /api/stats.
@@ -27,9 +34,21 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetchEvents(200).then(setEvents).catch(() => {});
+    fetchEvents(200).then((data) => setEvents(data.map(withDisplayTime))).catch(() => {});
     fetchStats().then(setStats).catch(() => {});
   }, []);
+
+  // Drain queued WebSocket events into React state on a fixed cadence, so a
+  // burst of incoming traffic causes one render instead of one per message.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const queued = eventQueueRef.current.splice(0);
+      if (!queued.length) return;
+      setEvents((prev) => [...queued.reverse(), ...prev].slice(0, 200));
+      refreshStats();
+    }, FLUSH_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [refreshStats]);
 
   useEffect(() => {
     let ws;
@@ -44,24 +63,31 @@ export default function App() {
         attempt = 0;
         setStatus("connected");
         // We may have missed events while disconnected - backfill.
-        fetchEvents(200).then(setEvents).catch(() => {});
+        fetchEvents(200).then((data) => setEvents(data.map(withDisplayTime))).catch(() => {});
         fetchStats().then(setStats).catch(() => {});
       };
 
       ws.onclose = () => {
         if (unmounted) return;
         setStatus("disconnected");
-        const delay = Math.min(1000 * 2 ** attempt, 10000);
+        const baseDelay = Math.min(1000 * 2 ** attempt, 10000);
+        const delay = baseDelay + Math.random() * 500; // jitter so clients don't reconnect in lockstep
         attempt += 1;
         reconnectTimer = setTimeout(connect, delay);
       };
 
-      ws.onerror = () => setStatus("error");
+      ws.onerror = () => {
+        setStatus("error");
+        ws.close();
+      };
 
       ws.onmessage = (msg) => {
-        const event = JSON.parse(msg.data);
-        setEvents((prev) => [event, ...prev].slice(0, 200));
-        refreshStats();
+        try {
+          const event = JSON.parse(msg.data);
+          eventQueueRef.current.push(withDisplayTime(event));
+        } catch (err) {
+          console.error("Invalid WebSocket event", err);
+        }
       };
     };
 
@@ -93,7 +119,9 @@ export default function App() {
             <button className="about-button" onClick={() => setShowAbout(true)}>
               About
             </button>
-            <span className={`ws-status ${status}`}>WebSocket: {status}</span>
+            <span className={`ws-status ${status}`}>
+              WebSocket: {status === "disconnected" ? "reconnecting…" : status}
+            </span>
           </div>
         </header>
         <Suspense fallback={<div className="route-loading">Loading…</div>}>

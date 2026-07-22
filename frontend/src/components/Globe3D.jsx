@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import Globe from "react-globe.gl";
 
 // Approximate location of the honeypot VPS (NYC1 datacenter) - arcs
@@ -9,9 +9,15 @@ const LOOKUP_COLOR = "#c084fc";
 
 const GLOBE_HEIGHT = 380;
 const IDLE_VIEW = { lat: 15, lng: 10, altitude: 2.2 };
-const MAX_ARCS = 50;
+const MAX_ARCS = 25;
+const MAX_ARCS_LOW_POWER = 10;
+const MAX_RINGS = 5;
 const RETURN_DELAY_MS = 2200;
-const AUTO_ROTATE_SPEED = 13; // ~4.6s per rotation
+const AUTO_ROTATE_SPEED = 0.4; // ~2min per rotation
+
+// Only these event types are worth interrupting the idle view for.
+const FOCUS_EVENT_TYPES = new Set(["login_attempt", "command_input"]);
+const FOCUS_MIN_INTERVAL_MS = 6000;
 
 const GLOBE_IMAGE_URL = "https://unpkg.com/three-globe/example/img/earth-night.jpg";
 const BUMP_IMAGE_URL = "https://unpkg.com/three-globe/example/img/earth-topology.png";
@@ -52,17 +58,29 @@ function formatLookupLabel(loc) {
   return `${loc.ip ? `${loc.ip} - ` : ""}${place || "Unknown location"} (${roundCoord(loc.lat)}, ${roundCoord(loc.lng)})`;
 }
 
-export default function Globe3D({ events }) {
+function isLowPowerDevice() {
+  return (
+    window.innerWidth < 768 ||
+    navigator.hardwareConcurrency <= 4 ||
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
+function Globe3D({ events }) {
   const containerRef = useRef(null);
   const globeRef = useRef(null);
   const lastEventIdRef = useRef(null);
   const returnTimerRef = useRef(null);
+  const lastFocusAtRef = useRef(0);
   const [width, setWidth] = useState(0);
   const [lookup, setLookup] = useState(null);
   const [showLookupPanel, setShowLookupPanel] = useState(false);
   const [ipInput, setIpInput] = useState("");
   const [lookupState, setLookupState] = useState("idle"); // idle | loading | error
   const [lookupError, setLookupError] = useState("");
+  const [performanceMode, setPerformanceMode] = useState(() => isLowPowerDevice());
+  // Camera-follow is noisy on small screens, so it defaults off there.
+  const [followAttacks, setFollowAttacks] = useState(() => window.innerWidth >= 768);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -73,9 +91,10 @@ export default function Globe3D({ events }) {
     return () => observer.disconnect();
   }, []);
 
+  const maxArcs = performanceMode ? MAX_ARCS_LOW_POWER : MAX_ARCS;
   const pins = useMemo(
-    () => events.filter((e) => e.lat != null && e.lon != null).slice(0, MAX_ARCS),
-    [events]
+    () => events.filter((e) => e.lat != null && e.lon != null).slice(0, maxArcs),
+    [events, maxArcs]
   );
 
   const recentLocations = useMemo(() => {
@@ -107,8 +126,11 @@ export default function Globe3D({ events }) {
   );
 
   const ringsData = useMemo(
-    () => pins.slice(0, 12).map((e) => ({ lat: e.lat, lng: e.lon, color: colorFor(e.event_type) })),
-    [pins]
+    () =>
+      performanceMode
+        ? []
+        : pins.slice(0, MAX_RINGS).map((e) => ({ lat: e.lat, lng: e.lon, color: colorFor(e.event_type) })),
+    [pins, performanceMode]
   );
 
   const pointsData = useMemo(() => {
@@ -128,14 +150,21 @@ export default function Globe3D({ events }) {
     controls.autoRotateSpeed = AUTO_ROTATE_SPEED;
   };
 
-  // On each new attack, briefly zoom the camera toward its origin, then
-  // ease back out to the idle overview and resume auto-rotation. Skipped
-  // while the user has an IP lookup open so the two don't fight.
+  // On a new higher-value attack (login/command, not every connection),
+  // briefly zoom the camera toward its origin, then ease back out to the
+  // idle overview and resume auto-rotation. Throttled to at most one focus
+  // per FOCUS_MIN_INTERVAL_MS, and skipped entirely while the user has an
+  // IP lookup open or "follow attacks" is turned off.
   useEffect(() => {
     const latest = pins[0];
     if (!latest || latest.id === lastEventIdRef.current) return;
     lastEventIdRef.current = latest.id;
-    if (lookup) return;
+    if (lookup || !followAttacks) return;
+    if (!FOCUS_EVENT_TYPES.has(latest.event_type)) return;
+
+    const now = Date.now();
+    if (now - lastFocusAtRef.current < FOCUS_MIN_INTERVAL_MS) return;
+    lastFocusAtRef.current = now;
 
     const globe = globeRef.current;
     if (!globe) return;
@@ -152,9 +181,22 @@ export default function Globe3D({ events }) {
       globe.pointOfView(IDLE_VIEW, returnMs);
       controls.autoRotate = !reduce;
     }, RETURN_DELAY_MS);
-  }, [pins, lookup]);
+  }, [pins, lookup, followAttacks]);
 
   useEffect(() => () => clearTimeout(returnTimerRef.current), []);
+
+  // Pause rotation while the tab isn't visible; resume when it comes back
+  // (unless the user has reduced motion or a lookup panel open).
+  useEffect(() => {
+    const handleVisibility = () => {
+      const globe = globeRef.current;
+      if (!globe) return;
+      const controls = globe.controls();
+      controls.autoRotate = !document.hidden && !lookup && !reduceMotion();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [lookup]);
 
   const goToLocation = (loc) => {
     clearTimeout(returnTimerRef.current);
@@ -211,6 +253,20 @@ export default function Globe3D({ events }) {
       <div className="world-map-header">
         <h2>Live Attack Map</h2>
         <div className="lookup-controls">
+          <button
+            className="about-button"
+            onClick={() => setFollowAttacks((v) => !v)}
+            title="Automatically focus the camera on new login/command attacks"
+          >
+            Follow attacks: {followAttacks ? "On" : "Off"}
+          </button>
+          <button
+            className="about-button"
+            onClick={() => setPerformanceMode((v) => !v)}
+            title="Fewer arcs/rings and no bump map for low-powered devices"
+          >
+            Visual mode: {performanceMode ? "Performance" : "Full"}
+          </button>
           <button className="about-button" onClick={() => setShowLookupPanel((v) => !v)}>
             Look up IP
           </button>
@@ -263,10 +319,10 @@ export default function Globe3D({ events }) {
             width={width}
             height={GLOBE_HEIGHT}
             globeImageUrl={GLOBE_IMAGE_URL}
-            bumpImageUrl={BUMP_IMAGE_URL}
+            bumpImageUrl={performanceMode ? undefined : BUMP_IMAGE_URL}
             backgroundImageUrl={BACKGROUND_IMAGE_URL}
             backgroundColor="rgba(0,0,0,0)"
-            showAtmosphere
+            showAtmosphere={!performanceMode}
             atmosphereColor="#60a5fa"
             atmosphereAltitude={0.2}
             onGlobeReady={handleGlobeReady}
@@ -294,3 +350,5 @@ export default function Globe3D({ events }) {
     </div>
   );
 }
+
+export default memo(Globe3D);
