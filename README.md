@@ -18,12 +18,6 @@ commands typed by actual attackers rather than synthetic data.
 Built as a portfolio project to demonstrate Linux hardening, real-time systems
 design, WebSocket streaming, event pipelines, and SIEM-style log analysis.
 
-## Status
-
-Phases 0-4 are complete: local prototype, GeoIP/dashboard enrichment, container
-hardening, and a live VPS deployment with an egress-filtered honeypot behind
-HTTPS. Phase 5 (recruiter polish) is in progress.
-
 ## Live Demo
 
 **[honeypot-map.xyz](https://honeypot-map.xyz)**
