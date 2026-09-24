@@ -33,7 +33,7 @@ function EventFeed({ events }) {
             <th>Type</th>
             <th>Username</th>
             <th>Password</th>
-            <th>Command</th>
+            <th>Command / Detail</th>
           </tr>
         </thead>
         <tbody>
@@ -45,7 +45,7 @@ function EventFeed({ events }) {
               <td className={`event-type ${e.event_type}`}>{e.event_type}</td>
               <td>{e.username ?? ""}</td>
               <td>{e.password ?? ""}</td>
-              <td>{e.command ?? ""}</td>
+              <td>{e.command ?? e.detail ?? ""}</td>
             </tr>
           ))}
         </tbody>

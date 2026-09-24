@@ -41,24 +41,33 @@ def record_event(event: dict) -> None:
             )
 
 
+SESSION_METADATA_COLUMNS = {"ttylog_path", "client_version", "hassh"}
+
+
 def record_ttylog(session_id: str, ttylog_filename: str) -> None:
     """Attaches the session's ttylog filename once Cowrie closes it out
-    (see parser.parse_log_closed). May arrive before the session row exists
-    if log lines are processed out of order, so upsert rather than assume."""
+    (see parser.parse_log_closed)."""
+    record_metadata(session_id, "ttylog_path", ttylog_filename)
+
+
+def record_metadata(session_id: str, column: str, value: str) -> None:
+    """Sets one per-session metadata column (ttylog, client fingerprint).
+    May arrive before the session row exists if log lines are processed out
+    of order, so upsert rather than assume."""
+    if column not in SESSION_METADATA_COLUMNS:  # column name is interpolated below
+        raise ValueError(f"not a session metadata column: {column}")
     now = datetime.now(timezone.utc).isoformat()
     with connect() as conn:
         row = conn.execute("SELECT session_id FROM sessions WHERE session_id = ?", (session_id,)).fetchone()
         if row is None:
             conn.execute(
-                """INSERT INTO sessions
-                   (session_id, src_ip, first_seen, last_seen, event_count, credentials, commands, ttylog_path)
+                f"""INSERT INTO sessions
+                   (session_id, src_ip, first_seen, last_seen, event_count, credentials, commands, {column})
                    VALUES (?, '', ?, ?, 0, '', '', ?)""",
-                (session_id, now, now, ttylog_filename),
+                (session_id, now, now, value),
             )
         else:
-            conn.execute(
-                "UPDATE sessions SET ttylog_path = ? WHERE session_id = ?", (ttylog_filename, session_id)
-            )
+            conn.execute(f"UPDATE sessions SET {column} = ? WHERE session_id = ?", (value, session_id))
 
 
 def _append(existing: str, new: Optional[str]) -> str:

@@ -37,6 +37,7 @@ export default function SessionsPanel({ range }) {
               <th>Source IP</th>
               <th>Location</th>
               <th>Events</th>
+              <th>Client</th>
               <th>Commands</th>
               <th></th>
             </tr>
@@ -47,6 +48,10 @@ export default function SessionsPanel({ range }) {
                 <td>{s.src_ip}</td>
                 <td>{[s.city, s.country].filter(Boolean).join(", ") || "-"}</td>
                 <td>{s.event_count}</td>
+                <td className="sessions-commands" title={s.hassh ? `HASSH ${s.hassh}` : undefined}>
+                  {s.client_version ?? "-"}
+                  {s.hassh && <span className="empty"> · {s.hassh.slice(0, 8)}</span>}
+                </td>
                 <td className="sessions-commands">{s.commands.slice(0, 3).join(", ") || "-"}</td>
                 <td>
                   {s.has_replay ? (

@@ -308,6 +308,13 @@ th {
 .event-type.connection {
   color: #60a5fa;
 }
+.event-type.file_download,
+.event-type.file_upload {
+  color: #e879f9;
+}
+.event-type.tunnel_request {
+  color: #34d399;
+}
 
 .route-loading {
   color: #4b5875;

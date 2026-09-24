@@ -15,13 +15,13 @@ def insert_event(event: dict) -> None:
         conn.execute(
             """INSERT OR IGNORE INTO events
                (id, ts, src_ip, country, city, lat, lon, asn, protocol,
-                event_type, username, password, command, session_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                event_type, username, password, command, detail, session_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 event["id"], event["ts"], event.get("src_ip"), event.get("country"),
                 event.get("city"), event.get("lat"), event.get("lon"), event.get("asn"),
                 event.get("protocol"), event["event_type"], event.get("username"),
-                event.get("password"), event.get("command"), event.get("session_id"),
+                event.get("password"), event.get("command"), event.get("detail"), event.get("session_id"),
             ),
         )
 
@@ -75,7 +75,7 @@ def get_stats(hours: int = 24) -> dict:
 
 _SESSION_COLUMNS = """
     s.session_id, s.src_ip, s.first_seen, s.last_seen, s.event_count,
-    s.credentials, s.commands, s.ttylog_path,
+    s.credentials, s.commands, s.ttylog_path, s.client_version, s.hassh,
     (SELECT country FROM events e WHERE e.session_id = s.session_id AND e.country IS NOT NULL LIMIT 1) AS country,
     (SELECT city FROM events e WHERE e.session_id = s.session_id AND e.city IS NOT NULL LIMIT 1) AS city
 """

@@ -30,7 +30,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import db, geoip, replay, report, sessions, store
 from app.log_tailer import tail_file
-from app.parser import parse_line, parse_log_closed
+from app.parser import parse_client_info, parse_line, parse_log_closed
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("honeypot-backend")
@@ -81,6 +81,13 @@ async def _process_line(raw_line: str) -> None:
     if log_closed is not None:
         await asyncio.to_thread(
             sessions.record_ttylog, log_closed["session_id"], log_closed["ttylog_filename"]
+        )
+        return
+
+    client_info = parse_client_info(raw_line)
+    if client_info is not None:
+        await asyncio.to_thread(
+            sessions.record_metadata, client_info["session_id"], client_info["column"], client_info["value"]
         )
         return
 
@@ -194,6 +201,8 @@ async def api_sessions(range: str = "24h", limit: int = 8):
                 "event_count": r["event_count"],
                 "commands": [c for c in (r["commands"] or "").split("\n") if c],
                 "has_replay": bool(r["ttylog_path"]),
+                "client_version": r["client_version"],
+                "hassh": r["hassh"],
             }
             for r in rows
         ]

@@ -31,7 +31,9 @@ CREATE TABLE IF NOT EXISTS sessions (
     event_count INTEGER NOT NULL DEFAULT 0,
     credentials TEXT NOT NULL DEFAULT '',
     commands TEXT NOT NULL DEFAULT '',
-    ttylog_path TEXT
+    ttylog_path TEXT,
+    client_version TEXT,
+    hassh TEXT
 );
 
 CREATE TABLE IF NOT EXISTS events (
@@ -48,6 +50,7 @@ CREATE TABLE IF NOT EXISTS events (
     username TEXT,
     password TEXT,
     command TEXT,
+    detail TEXT,
     session_id TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_events_ts ON events(ts);
@@ -65,9 +68,15 @@ def init_db():
 def _migrate(conn: sqlite3.Connection) -> None:
     """Additive column migrations for databases created before they existed.
     `CREATE TABLE IF NOT EXISTS` above only helps on a fresh DB."""
-    columns = {row["name"] for row in conn.execute("PRAGMA table_info(sessions)")}
-    if "ttylog_path" not in columns:
-        conn.execute("ALTER TABLE sessions ADD COLUMN ttylog_path TEXT")
+    for table, column in (
+        ("sessions", "ttylog_path"),
+        ("sessions", "client_version"),
+        ("sessions", "hassh"),
+        ("events", "detail"),
+    ):
+        columns = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+        if column not in columns:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} TEXT")
 
 
 @contextmanager
