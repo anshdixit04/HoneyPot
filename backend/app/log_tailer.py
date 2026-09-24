@@ -23,6 +23,7 @@ async def tail_file(path: str, poll_interval: float = 0.5) -> AsyncGenerator[str
     """
     current_inode = None
     fh = None
+    first_open = True
 
     while True:
         if fh is None:
@@ -30,7 +31,12 @@ async def tail_file(path: str, poll_interval: float = 0.5) -> AsyncGenerator[str
                 await asyncio.sleep(poll_interval)
                 continue
             fh = open(path, "r")
-            fh.seek(0, os.SEEK_END)  # start at end - only new events, not backlog
+            # On first open, skip the existing backlog (only stream new events).
+            # After a rotation, the new file starts empty, so read it from the
+            # beginning to avoid dropping events written before we reopened.
+            if first_open:
+                fh.seek(0, os.SEEK_END)
+                first_open = False
             current_inode = os.fstat(fh.fileno()).st_ino
 
         line = fh.readline()

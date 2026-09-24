@@ -27,7 +27,9 @@ def lookup(ip: str) -> dict:
     result = empty
     try:
         resp = requests.get(GEOIP_URL.format(ip=ip), timeout=2)
-        data = resp.json()
+        # A non-2xx (e.g. HTTP 429 when we exceed the 45 req/min free-tier
+        # limit) usually has a non-JSON body, so guard the parse.
+        data = resp.json() if resp.ok else {}
         if data.get("status") == "success":
             result = {
                 "country": data.get("countryCode"),
@@ -36,8 +38,11 @@ def lookup(ip: str) -> dict:
                 "lon": data.get("lon"),
                 "asn": data.get("as"),
             }
-    except requests.RequestException:
-        pass  # never let GeoIP failures block the live event pipeline
+    except (requests.RequestException, ValueError):
+        # RequestException = network/timeout; ValueError = JSONDecodeError
+        # when the API returns a non-JSON body (rate-limit page, empty 429).
+        # Never let a GeoIP hiccup crash the live event pipeline.
+        pass
 
     # Cache failures too (as `empty`) so a down/rate-limited API doesn't get
     # re-hit for the same IP on every subsequent event.

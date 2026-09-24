@@ -76,26 +76,47 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-async def event_pump():
-    """Background task: tails the Cowrie log forever, parses, enriches, broadcasts."""
-    logger.info("Watching Cowrie log at %s", COWRIE_LOG_PATH)
-    async for raw_line in tail_file(COWRIE_LOG_PATH):
-        log_closed = parse_log_closed(raw_line)
-        if log_closed is not None:
-            await asyncio.to_thread(
-                sessions.record_ttylog, log_closed["session_id"], log_closed["ttylog_filename"]
-            )
-            continue
+async def _process_line(raw_line: str) -> None:
+    log_closed = parse_log_closed(raw_line)
+    if log_closed is not None:
+        await asyncio.to_thread(
+            sessions.record_ttylog, log_closed["session_id"], log_closed["ttylog_filename"]
+        )
+        return
 
-        event = parse_line(raw_line)
-        if event is None:
-            continue
-        geo = await asyncio.to_thread(geoip.lookup, event["src_ip"])
-        event.update(geo)
-        await asyncio.to_thread(sessions.record_event, event)
-        await asyncio.to_thread(store.insert_event, event)
-        logger.info("Event: %s from %s (%s)", event["event_type"], event["src_ip"], event.get("country"))
-        await manager.broadcast(event)
+    event = parse_line(raw_line)
+    if event is None:
+        return
+    geo = await asyncio.to_thread(geoip.lookup, event["src_ip"])
+    event.update(geo)
+    await asyncio.to_thread(sessions.record_event, event)
+    await asyncio.to_thread(store.insert_event, event)
+    logger.info("Event: %s from %s (%s)", event["event_type"], event["src_ip"], event.get("country"))
+    await manager.broadcast(event)
+
+
+async def event_pump():
+    """Background task: tails the Cowrie log forever, parses, enriches, broadcasts.
+
+    Resilient by design: a failure on any single line is logged and skipped,
+    and the whole tail loop is restarted if it ever raises. A prior version
+    had no guard here, so one uncaught error (e.g. a GeoIP rate-limit response
+    that failed to parse as JSON) silently killed ingestion for good while the
+    web server kept serving a frozen database.
+    """
+    logger.info("Watching Cowrie log at %s", COWRIE_LOG_PATH)
+    while True:
+        try:
+            async for raw_line in tail_file(COWRIE_LOG_PATH):
+                try:
+                    await _process_line(raw_line)
+                except Exception:
+                    logger.exception("Skipping a Cowrie log line that failed to process")
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("event_pump tail loop crashed; restarting in 2s")
+            await asyncio.sleep(2)
 
 
 async def retention_loop():
