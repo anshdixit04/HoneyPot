@@ -61,6 +61,10 @@ CREATE INDEX IF NOT EXISTS idx_events_session ON events(session_id);
 def init_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     with connect() as conn:
+        # WAL lets the dashboard's read queries run while the event pump
+        # writes, instead of both fighting over one file lock. Persistent -
+        # stored in the DB file, so setting it on every startup is a no-op.
+        conn.execute("PRAGMA journal_mode=WAL")
         conn.executescript(SCHEMA)
         _migrate(conn)
 
@@ -81,7 +85,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
 
 @contextmanager
 def connect():
-    conn = sqlite3.connect(DB_PATH)
+    # Wait up to 30s for a lock (default 5s) - a slow stats/report query
+    # during an attack burst must not turn into "database is locked".
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
     try:
         yield conn

@@ -7,8 +7,10 @@ set -euo pipefail
 # Run on the Linux VPS after:
 #   docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml up -d
 #
-# Requires root and iptables. Re-run after recreating the Cowrie container,
-# because Docker may assign a new container IP.
+# Requires root and iptables. The prod compose file pins Cowrie to
+# 172.19.0.2 and infra/honeypot-egress.service runs this at every boot with
+# COWRIE_IP set, so the rule no longer depends on the container being up.
+# Without COWRIE_IP, the IP is read from the running container.
 
 COWRIE_CONTAINER="${COWRIE_CONTAINER:-honeypot-cowrie}"
 CHAIN="${CHAIN:-HONEYPOT_EGRESS}"
@@ -18,19 +20,14 @@ if [[ "${EUID}" -ne 0 ]]; then
   exit 1
 fi
 
-if ! command -v docker >/dev/null 2>&1; then
-  echo "docker is required" >&2
-  exit 1
-fi
-
 if ! command -v iptables >/dev/null 2>&1; then
   echo "iptables is required" >&2
   exit 1
 fi
 
-COWRIE_IP="$(
+COWRIE_IP="${COWRIE_IP:-$(
   docker inspect -f '{{range .NetworkSettings.Networks}}{{if eq .NetworkID ""}}{{else}}{{.IPAddress}}{{end}}{{end}}' "${COWRIE_CONTAINER}"
-)"
+)}"
 
 if [[ -z "${COWRIE_IP}" ]]; then
   echo "Could not determine ${COWRIE_CONTAINER} container IP" >&2

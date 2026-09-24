@@ -84,14 +84,30 @@ which preserves the attacker's source IP for GeoIP. A plain TCP relay would
 hide the real source IP. The `DOCKER-USER` iptables chain lets us preserve DNAT
 for inbound traffic while dropping new outbound traffic from Cowrie.
 
-Re-run the script after recreating the Cowrie container because Docker may
-assign a new container IP.
-
-To persist rules across reboot on Ubuntu/Debian:
+iptables rules live only in memory, so a reboot drops them. The prod compose
+file pins Cowrie to `172.19.0.2`, and a systemd unit re-applies the rule for
+that IP at every boot:
 
 ```bash
-sudo apt-get install iptables-persistent
-sudo netfilter-persistent save
+sudo cp infra/honeypot-egress.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now honeypot-egress
+```
+
+The unit assumes the repo is at `/root/HoneyPot`; edit `ExecStart` if not.
+(Avoid `iptables-persistent` here: it also saves Docker's own rules, which
+conflict with the ones Docker recreates on start.)
+
+## 4a. Backfill A Gap
+
+If ingestion was down for a period, replay the rotated Cowrie logs for it.
+Event ids come from the log line, so re-running is safe:
+
+```bash
+docker exec -d honeypot-backend sh -c 'python -m app.backfill \
+  --after <last stored event ts> --before <first ts after restart> \
+  /var/log/cowrie/cowrie.json.2026-* > /data/backfill.log 2>&1'
+docker exec honeypot-backend tail -3 /data/backfill.log
 ```
 
 ## 5. Smoke Test

@@ -7,8 +7,20 @@
 
 services:
   cowrie:
-    image: cowrie/cowrie:latest
+    # Pinned by digest (the build deployed 2026-07) so a rebuild can't
+    # silently pull a new Cowrie. Bump deliberately.
+    image: cowrie/cowrie@sha256:b4817f185e522f5a66975568ff304ae02c042b65454c2542918f42dbaf1b31fa
     container_name: honeypot-cowrie
+    # Cowrie reads COWRIE_<SECTION>_<OPTION> env vars as cowrie.cfg overrides.
+    # The stock hostname (svr04) and Debian identity are on public
+    # honeypot-detection lists; these match the real Ubuntu 24.04 host instead.
+    environment:
+      COWRIE_HONEYPOT_HOSTNAME: web-prod-02
+      COWRIE_SSH_VERSION: SSH-2.0-OpenSSH_9.6p1 Ubuntu-3ubuntu13.19
+      COWRIE_SHELL_KERNEL_VERSION: 6.8.0-124-generic
+      COWRIE_SHELL_KERNEL_BUILD_STRING: "#124-Ubuntu SMP PREEMPT_DYNAMIC Tue May 26 13:00:45 UTC 2026"
+      # Off by default in the image, even though port 2223 is published below.
+      COWRIE_TELNET_ENABLED: "yes"
     ports:
       - "${HONEYPOT_BIND_IP:-0.0.0.0}:${HONEYPOT_SSH_PORT:-2222}:2222"
       - "${HONEYPOT_BIND_IP:-0.0.0.0}:${HONEYPOT_TELNET_PORT:-2223}:2223"
@@ -20,7 +32,10 @@ services:
       - cowrie_tty:/cowrie/cowrie-git/var/lib/cowrie/tty
     restart: unless-stopped
     networks:
-      - cowrie_net
+      cowrie_net:
+        # Fixed so the egress firewall rule (infra/iptables-honeypot-egress.sh,
+        # applied at boot by infra/honeypot-egress.service) always matches.
+        ipv4_address: 172.19.0.2
     read_only: true
     tmpfs:
       - /tmp
@@ -69,6 +84,9 @@ services:
 networks:
   cowrie_net:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.19.0.0/16
   dashboard_net:
     driver: bridge
 

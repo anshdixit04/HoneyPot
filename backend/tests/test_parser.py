@@ -24,6 +24,10 @@ def demo():
     e = parse_line(line(eventid="cowrie.direct-tcpip.request", dst_ip="8.8.8.8", dst_port=53))
     assert (e["event_type"], e["detail"]) == ("tunnel_request", "8.8.8.8:53")
     assert parse_line(line(eventid="cowrie.command.input", input="ls"))["detail"] is None
+    # Same line -> same id (backfill idempotency); JSON that isn't an object is skipped.
+    same = line(eventid="cowrie.command.input", input="ls")
+    assert parse_line(same)["id"] == parse_line(same)["id"] != parse_line(line(eventid="cowrie.command.input", input="id"))["id"]
+    assert parse_line('"just a string"') is None and parse_line("123") is None
     assert parse_line(line(eventid="cowrie.client.version", version="SSH-2.0-Go")) is None
 
     ver = parse_client_info(line(eventid="cowrie.client.version", version="SSH-2.0-Go"))
@@ -41,12 +45,15 @@ def demo():
     for info in (ver, kex):  # before any event: metadata upsert creates the row
         sessions.record_metadata(info["session_id"], info["column"], info["value"])
     event = parse_line(line(eventid="cowrie.session.file_download", url="http://x/bot.sh"))
+    assert store.insert_event(event)
     sessions.record_event(event)
-    store.insert_event(event)
-
-    assert store.get_events()[0]["detail"] == "http://x/bot.sh"
+    assert not store.insert_event(event)  # replayed line: ignored, not duplicated
+    assert [e["detail"] for e in store.get_events()] == ["http://x/bot.sh"]
     s = store.get_session("s1")
     assert (s["client_version"], s["hassh"]) == ("SSH-2.0-Go", "h4ssh")
+    # Session times come from the event (so a backfill doesn't make July look like today).
+    assert s["last_seen"].startswith("2026-09-23T10:00:00") and s["first_seen"] == s["last_seen"]
+    assert s["src_ip"] == "1.2.3.4" and s["event_count"] == 1
     try:
         sessions.record_metadata("s1", "src_ip; DROP TABLE events", "x")
         raise AssertionError("unknown column accepted")

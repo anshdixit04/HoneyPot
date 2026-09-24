@@ -24,6 +24,7 @@ async def tail_file(path: str, poll_interval: float = 0.5) -> AsyncGenerator[str
     current_inode = None
     fh = None
     first_open = True
+    partial = ""
 
     while True:
         if fh is None:
@@ -40,9 +41,13 @@ async def tail_file(path: str, poll_interval: float = 0.5) -> AsyncGenerator[str
             current_inode = os.fstat(fh.fileno()).st_ino
 
         line = fh.readline()
-        if line:
-            yield line
+        if line.endswith("\n"):
+            yield partial + line
+            partial = ""
             continue
+        # Empty, or the start of a line Cowrie is still writing - hold on to
+        # it until the rest arrives instead of yielding half a JSON object.
+        partial += line
 
         # No new data - check if the file was rotated out from under us.
         try:
@@ -53,5 +58,6 @@ async def tail_file(path: str, poll_interval: float = 0.5) -> AsyncGenerator[str
         if disk_inode != current_inode:
             fh.close()
             fh = None  # reopen next loop iteration
+            partial = ""
         else:
             await asyncio.sleep(poll_interval)

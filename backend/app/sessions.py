@@ -15,7 +15,8 @@ def record_event(event: dict) -> None:
     if not session_id:
         return
 
-    now = datetime.now(timezone.utc).isoformat()
+    # The event's own time, not wall-clock: the backfill replays old logs.
+    now = event.get("ts") or datetime.now(timezone.utc).isoformat()
     cred = None
     if event["event_type"] == "login_attempt":
         cred = f"{event.get('username') or ''}:{event.get('password') or ''}"
@@ -34,10 +35,18 @@ def record_event(event: dict) -> None:
                 (session_id, event.get("src_ip"), now, now, cred or "", command or ""),
             )
         else:
+            # event_count = 0 means record_metadata created the row (a
+            # fingerprint/ttylog line arrived first) with placeholder
+            # src_ip/times - the first real event overwrites them.
             conn.execute(
-                """UPDATE sessions SET last_seen = ?, event_count = event_count + 1,
-                   credentials = ?, commands = ? WHERE session_id = ?""",
-                (now, _append(row["credentials"], cred), _append(row["commands"], command), session_id),
+                """UPDATE sessions SET
+                     src_ip = CASE WHEN event_count = 0 THEN ? ELSE src_ip END,
+                     first_seen = CASE WHEN event_count = 0 THEN ? ELSE first_seen END,
+                     last_seen = CASE WHEN event_count = 0 THEN ? ELSE MAX(last_seen, ?) END,
+                     event_count = event_count + 1, credentials = ?, commands = ?
+                   WHERE session_id = ?""",
+                (event.get("src_ip"), now, now, now,
+                 _append(row["credentials"], cred), _append(row["commands"], command), session_id),
             )
 
 

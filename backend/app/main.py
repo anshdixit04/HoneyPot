@@ -96,8 +96,9 @@ async def _process_line(raw_line: str) -> None:
         return
     geo = await asyncio.to_thread(geoip.lookup, event["src_ip"])
     event.update(geo)
+    if not await asyncio.to_thread(store.insert_event, event):
+        return  # already stored - don't double-count it in the session
     await asyncio.to_thread(sessions.record_event, event)
-    await asyncio.to_thread(store.insert_event, event)
     logger.info("Event: %s from %s (%s)", event["event_type"], event["src_ip"], event.get("country"))
     await manager.broadcast(event)
 

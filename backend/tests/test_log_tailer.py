@@ -25,6 +25,16 @@ async def demo():
         f.write("b\nc\n")
     assert (await nxt).strip() == "b"
     assert (await gen.__anext__()).strip() == "c"
+
+    # A line caught mid-write is held until its newline arrives, not split.
+    nxt = asyncio.ensure_future(gen.__anext__())
+    with open(path, "a") as f:
+        f.write('{"half": ')
+    await asyncio.sleep(0.05)
+    assert not nxt.done()
+    with open(path, "a") as f:
+        f.write('"line"}\n')
+    assert await nxt == '{"half": "line"}\n'
     print("ok")
 
 

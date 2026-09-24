@@ -67,6 +67,8 @@ def parse_line(raw_line: str) -> Optional[dict]:
         raw = json.loads(raw_line)
     except json.JSONDecodeError:
         return None
+    if not isinstance(raw, dict):
+        return None
 
     eventid = raw.get("eventid")
     if eventid not in RELEVANT_EVENTS:
@@ -79,7 +81,9 @@ def parse_line(raw_line: str) -> Optional[dict]:
         parsed_ts = datetime.now(timezone.utc)
 
     event = {
-        "id": str(uuid.uuid4()),
+        # Derived from the raw line, so replaying a log (backfill) inserts
+        # each event once - store.insert_event is INSERT OR IGNORE.
+        "id": str(uuid.uuid5(uuid.NAMESPACE_OID, raw_line)),
         "ts": parsed_ts.isoformat(),
         "src_ip": raw.get("src_ip"),
         # Filled in by geoip.py - placeholders here so the contract shape
@@ -114,7 +118,7 @@ def parse_log_closed(raw_line: str) -> Optional[dict]:
     except json.JSONDecodeError:
         return None
 
-    if raw.get("eventid") != "cowrie.log.closed":
+    if not isinstance(raw, dict) or raw.get("eventid") != "cowrie.log.closed":
         return None
 
     session_id = raw.get("session")

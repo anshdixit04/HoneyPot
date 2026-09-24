@@ -10,9 +10,10 @@ from app import replay
 from app.db import connect
 
 
-def insert_event(event: dict) -> None:
+def insert_event(event: dict) -> bool:
+    """Returns False if the event was already stored (a replayed line)."""
     with connect() as conn:
-        conn.execute(
+        cur = conn.execute(
             """INSERT OR IGNORE INTO events
                (id, ts, src_ip, country, city, lat, lon, asn, protocol,
                 event_type, username, password, command, detail, session_id)
@@ -24,6 +25,7 @@ def insert_event(event: dict) -> None:
                 event.get("password"), event.get("command"), event.get("detail"), event.get("session_id"),
             ),
         )
+    return cur.rowcount == 1
 
 
 def get_events(limit: int = 100, before: Optional[str] = None) -> list:

@@ -1,0 +1,20 @@
+# Re-applies the Cowrie egress block at every boot (iptables rules live only
+# in memory). Install on the VPS:
+#   sudo cp infra/honeypot-egress.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now honeypot-egress
+# Assumes the repo is at /root/HoneyPot - edit ExecStart if it lives elsewhere.
+[Unit]
+Description=Block new outbound connections from the Cowrie honeypot container
+# Docker creates the DOCKER-USER chain on start; the rule hooks into it.
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Matches ipv4_address in infra/docker-compose.prod.yml.
+Environment=COWRIE_IP=172.19.0.2
+ExecStart=/bin/bash /root/HoneyPot/infra/iptables-honeypot-egress.sh
+
+[Install]
+WantedBy=multi-user.target
